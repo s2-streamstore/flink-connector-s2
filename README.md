@@ -134,3 +134,28 @@ in [S2UpsertTable](https://github.com/s2-streamstore/flink-connector-s2/blob/mai
 
 _In progress!_
 
+## Demos
+
+### Eventstream
+
+#### Setup
+
+```bash
+export MY_BASIN="sgb-eventstream-t1"
+s2 create-basin "${MY_BASIN}"
+
+seq 0 9 \
+	| xargs -I {} echo "host/000{}" \
+	| xargs -I {} s2 create-stream "s2://${MY_BASIN}/{}" --storage-class standard -r 1w
+	
+s2 create-stream "s2://${MY_BASIN}/tables/item-queries-1" --storage-class standard -r 1w
+s2 create-stream "s2://${MY_BASIN}/tables/top-query-per-item-1" --storage-class standard -r 1w
+
+seq 10 20 \
+	| xargs -I {} echo "host/00{}" \
+	| xargs -I {} s2 create-stream "s2://${MY_BASIN}/{}" --storage-class standard -r 1w
+```
+
+Data spoofing.
+
+

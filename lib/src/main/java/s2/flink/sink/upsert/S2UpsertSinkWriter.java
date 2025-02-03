@@ -10,10 +10,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.Properties;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.apache.flink.api.connector.sink2.WriterInitContext;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.connector.base.sink.writer.BufferedRequestState;
 import org.apache.flink.connector.base.sink.writer.ElementConverter;
 import org.apache.flink.connector.base.sink.writer.config.AsyncSinkWriterConfiguration;
@@ -28,17 +28,8 @@ class S2UpsertSinkWriter extends S2SinkWriter<RowData> {
       WriterInitContext context,
       AsyncSinkWriterConfiguration configuration,
       Collection<BufferedRequestState<AppendRecord>> bufferedRequestStates,
-      Properties s2ConfigProperties,
-      String basin,
-      String stream) {
-    super(
-        elementConverter,
-        context,
-        configuration,
-        bufferedRequestStates,
-        s2ConfigProperties,
-        basin,
-        stream);
+      ReadableConfig clientConfiguration) {
+    super(elementConverter, context, configuration, bufferedRequestStates, clientConfiguration);
   }
 
   @Override

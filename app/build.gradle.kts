@@ -34,6 +34,7 @@ dependencies {
     implementation("org.apache.flink:flink-connector-files:$flinkVersion")
     implementation("org.apache.flink:flink-json:$flinkVersion")
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:$log4jVersion")
+    implementation("com.google.protobuf:protobuf-java:4.29.3")
     implementation("org.apache.logging.log4j:log4j-api:$log4jVersion")
     implementation("org.apache.logging.log4j:log4j-core:$log4jVersion")
 }
