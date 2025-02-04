@@ -1,0 +1,15 @@
+[versions]
+flink = "1.19.1"
+guava = "33.4.0-jre"
+protobuf = "4.29.3"
+s2 = "0.0.12"
+
+[libraries]
+flink-connector-base = { module = "org.apache.flink:flink-connector-base", version.ref = "flink" }
+flink-java = { module = "org.apache.flink:flink-java", version.ref = "flink" }
+flink-streaming-java = { module = "org.apache.flink:flink-streaming-java", version.ref = "flink" }
+flink-table-api-java-bridge = { module = "org.apache.flink:flink-table-api-java-bridge", version.ref = "flink" }
+guava = { module = "com.google.guava:guava", version.ref = "guava" }
+protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
+s2-internal = { module = "dev.s2:s2-internal", version.ref = "s2" }
+s2-sdk = { module = "dev.s2:s2-sdk", version.ref = "s2" }
