@@ -1,0 +1,5 @@
+s2.flink.properties
+s2.flink.sink
+s2.flink.sink.upsert
+s2.flink.table
+s2.flink.table.upsert
