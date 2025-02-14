@@ -1,4 +1,4 @@
-package org.example.app;
+package org.example.app.eventstream;
 
 import static s2.flink.config.S2ClientConfig.S2_AUTH_TOKEN;
 import static s2.flink.config.S2SinkConfig.S2_SINK_BASIN;
@@ -36,7 +36,7 @@ import s2.flink.source.split.SplitStartBehavior;
 
 public class EventStream {
 
-  private static final String WORKING_BASIN = "sgb-eventstream-t1";
+  private static final String WORKING_BASIN = "sgb-eventstream-t2";
 
   public static void main(String[] args) throws Exception {
 
@@ -92,6 +92,7 @@ public class EventStream {
                                 map.get("search")));
 
                       } catch (Exception e) {
+                        System.err.println(e.getMessage());
                         // Silently discard any bad data.
                       }
                     })
@@ -123,14 +124,15 @@ public class EventStream {
         ORDER BY pt
         MEASURES
           A.query AS matchedSearchQuery,
-          C.itemId AS matchedItemId
+          D.itemId AS matchedItemId
         ONE ROW PER MATCH
         AFTER MATCH SKIP TO NEXT ROW
-        PATTERN (A B C) WITHIN INTERVAL '10' MINUTES
+        PATTERN (A B C D) WITHIN INTERVAL '10' MINUTES
         DEFINE
           A AS A.action = 'search',
-          B AS B.action = 'cart',
-          C AS C.action = 'buy'
+          B AS B.action = 'view',
+          C AS C.action = 'cart',
+          D AS D.action = 'buy'
       )
     """;
 

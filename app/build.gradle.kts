@@ -22,10 +22,11 @@ repositories {
 val flinkVersion = "1.19.1"
 val grpcVersion = "1.64.0"
 var log4jVersion = "2.17.1"
-var s2Version = "0.0.12"
+var s2Version = "0.0.13-SNAPSHOT"
 
 dependencies {
     implementation(project(":lib"))
+    implementation("com.google.guava:guava:33.4.0-jre")
     implementation("dev.s2:s2-sdk:$s2Version")
     implementation("org.apache.flink:flink-table-api-java-bridge:$flinkVersion")
     implementation("org.apache.flink:flink-clients:$flinkVersion")
@@ -46,6 +47,6 @@ tasks.test {
 java {
     withSourcesJar()
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(19))
     }
 }

@@ -141,7 +141,7 @@ _In progress!_
 #### Setup
 
 ```bash
-export MY_BASIN="sgb-eventstream-t1"
+export MY_BASIN="sgb-eventstream-t2"
 s2 create-basin "${MY_BASIN}"
 
 seq 0 9 \
@@ -151,9 +151,6 @@ seq 0 9 \
 s2 create-stream "s2://${MY_BASIN}/tables/item-queries-1" --storage-class standard -r 1w
 s2 create-stream "s2://${MY_BASIN}/tables/top-query-per-item-1" --storage-class standard -r 1w
 
-seq 10 20 \
-	| xargs -I {} echo "host/00{}" \
-	| xargs -I {} s2 create-stream "s2://${MY_BASIN}/{}" --storage-class standard -r 1w
 ```
 
 Data spoofing.
