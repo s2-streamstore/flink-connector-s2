@@ -45,14 +45,18 @@ public class S2SplitSerializer implements SimpleVersionedSerializer<S2SourceSpli
   }
 
   public static S2SourceSplit fromProto(SourceSplit sourceSplit) {
-    final SplitStartBehavior startBehavior =
-        switch (sourceSplit.getStartBehavior()) {
-          case FIRST -> SplitStartBehavior.FIRST;
-          case NEXT -> SplitStartBehavior.NEXT;
-          case UNRECOGNIZED ->
-              throw new UnsupportedOperationException(
-                  "Unrecognized start behavior: " + sourceSplit.getStartBehavior());
-        };
+    final SplitStartBehavior startBehavior;
+    switch (sourceSplit.getStartBehavior()) {
+      case FIRST:
+        startBehavior = SplitStartBehavior.FIRST;
+        break;
+      case NEXT:
+        startBehavior = SplitStartBehavior.NEXT;
+        break;
+      default:
+        throw new UnsupportedOperationException(
+            "Unrecognized start behavior: " + sourceSplit.getStartBehavior());
+    }
     final Optional<Long> startSeqNum =
         sourceSplit.hasStartSeqNum() ? Optional.of(sourceSplit.getStartSeqNum()) : Optional.empty();
     return new S2SourceSplit(

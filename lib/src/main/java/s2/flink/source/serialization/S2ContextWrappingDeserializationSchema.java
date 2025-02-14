@@ -28,7 +28,7 @@ public class S2ContextWrappingDeserializationSchema<T>
       throws IOException {
     output.collect(
         new S2Context<T>(
-            stream, seqNum, this.deserializationSchema.deserialize(record.body().toByteArray())));
+            stream, seqNum, this.deserializationSchema.deserialize(record.body.toByteArray())));
   }
 
   @Override

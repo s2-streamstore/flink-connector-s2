@@ -22,7 +22,7 @@ public class S2RecordEmitter<T> implements RecordEmitter<SequencedRecord, T, S2S
     deserializationSchema.deserializeIntoCollector(
         element,
         splitState.originalSplit.splitId(),
-        element.seqNum(),
+        element.seqNum,
         new SourceOutputWrapper<>(output));
     splitState.register(element);
   }

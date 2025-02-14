@@ -1,4 +1,4 @@
-package org.example.app;
+package org.example.app.eventstream;
 
 import static s2.flink.config.S2ClientConfig.S2_AUTH_TOKEN;
 import static s2.flink.config.S2SourceConfig.S2_SOURCE_BASIN;

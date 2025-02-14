@@ -24,7 +24,7 @@ public class TransparentDeserializationSchema<T> implements S2ContextDeserializa
   public void deserializeIntoCollector(
       SequencedRecord record, String stream, Long seqNum, Collector<T> output) throws IOException {
     // Ignore stream, seqNum...
-    output.collect(this.coreSchema.deserialize(record.body().toByteArray()));
+    output.collect(this.coreSchema.deserialize(record.body.toByteArray()));
   }
 
   @Override

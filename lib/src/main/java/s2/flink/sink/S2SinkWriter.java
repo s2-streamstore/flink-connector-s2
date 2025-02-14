@@ -47,7 +47,7 @@ public class S2SinkWriter<InputT> extends AsyncSinkWriter<InputT, AppendRecord> 
     s2Config = S2ClientConfig.fromConfig(clientConfiguration);
     basinName = clientConfiguration.get(S2_SINK_BASIN);
     basinChannel = ManagedChannelFactory.forBasinOrStreamService(s2Config, basinName);
-    executorService = Executors.newScheduledThreadPool(1);
+    executorService = Executors.newScheduledThreadPool(10);
     streamClient =
         StreamClient.newBuilder(
                 this.s2Config,

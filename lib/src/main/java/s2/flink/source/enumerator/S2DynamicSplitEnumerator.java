@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.flink.api.connector.source.SplitEnumeratorContext;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -83,11 +84,10 @@ public class S2DynamicSplitEnumerator extends S2SplitEnumerator {
     return Futures.transformAsync(
         basinClient.listStreams(listStreamsRequest),
         resp -> {
-          accumulator.addAll(resp.elems());
-          if (resp.hasMore()) {
+          accumulator.addAll(resp.elems);
+          if (resp.hasMore) {
             return listStreamsRecursive(
-                updatedStartAfter(
-                    listStreamsRequest, resp.elems().get(resp.elems().size() - 1).name()),
+                updatedStartAfter(listStreamsRequest, resp.elems.get(resp.elems.size() - 1).name),
                 accumulator);
           } else {
             return Futures.immediateFuture(accumulator);
@@ -147,9 +147,9 @@ public class S2DynamicSplitEnumerator extends S2SplitEnumerator {
                   Duration.ofSeconds(10))
               .get()
               .stream()
-              .filter(s -> s.deletedAt().isEmpty())
-              .map(StreamInfo::name)
-              .toList();
+              .filter(s -> s.deletedAt.isEmpty())
+              .map(si -> si.name)
+              .collect(Collectors.toList());
       LOG.debug(
           "found {} active matching streams, first={}",
           resp.size(),
@@ -161,7 +161,7 @@ public class S2DynamicSplitEnumerator extends S2SplitEnumerator {
   }
 
   private void processStreams(List<String> updatedStreams, Throwable t) {
-    if (updatedStreams.isEmpty()) {
+    if (updatedStreams == null || updatedStreams.isEmpty()) {
       LOG.warn("No matching streams found during refresh.");
       return;
     }
@@ -175,6 +175,10 @@ public class S2DynamicSplitEnumerator extends S2SplitEnumerator {
 
     final var currentReaders = enumeratorContext.registeredReaders();
     final var currentNumReaders = currentReaders.size();
+
+    if (currentNumReaders == 0) {
+      return;
+    }
 
     if (currentNumReaders == enumeratorContext.currentParallelism()
         && !unassignedSplits.isEmpty()

@@ -3,6 +3,7 @@ package s2.flink.sink;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.stream.Collectors;
 import org.apache.flink.connector.base.sink.writer.AsyncSinkWriterStateSerializer;
 import s2.types.AppendRecord;
 import s2.types.Header;
@@ -22,7 +23,10 @@ public class S2StateSerializer extends AsyncSinkWriterStateSerializer<AppendReco
     s2.v1alpha.AppendRecord appendRecord = s2.v1alpha.AppendRecord.parseFrom(in.readAllBytes());
     return AppendRecord.newBuilder()
         .withBody(appendRecord.getBody())
-        .withHeaders(appendRecord.getHeadersList().stream().map(Header::fromProto).toList())
+        .withHeaders(
+            appendRecord.getHeadersList().stream()
+                .map(Header::fromProto)
+                .collect(Collectors.toList()))
         .build();
   }
 

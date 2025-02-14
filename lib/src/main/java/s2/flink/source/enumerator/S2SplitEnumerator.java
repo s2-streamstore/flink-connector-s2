@@ -6,11 +6,13 @@ import static s2.flink.config.S2SourceConfig.S2_SOURCE_STREAM_DISCOVERY_CADENCE_
 import static s2.flink.config.S2SourceConfig.S2_SOURCE_STREAM_DISCOVERY_PREFIX;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.flink.api.connector.source.SourceEvent;
 import org.apache.flink.api.connector.source.SplitEnumerator;
@@ -140,8 +142,8 @@ public abstract class S2SplitEnumerator
   public S2EnumeratorState snapshotState(long checkpointId) throws Exception {
     LOG.debug("snapshotState, checkpointId={}", checkpointId);
     return new S2EnumeratorState(
-        discoveredStreams.stream().toList(),
-        unassignedSplits.stream().toList(),
+        new ArrayList<>(discoveredStreams),
+        new ArrayList<>(unassignedSplits),
         this.initialDistributionCompleted.get());
   }
 

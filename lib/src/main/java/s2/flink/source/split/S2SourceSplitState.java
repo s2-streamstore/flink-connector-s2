@@ -21,7 +21,7 @@ public class S2SourceSplitState {
   }
 
   public void register(SequencedRecord record) {
-    this.startSeqNum = record.seqNum() + 1;
+    this.startSeqNum = record.seqNum + 1;
     this.consumedRecords += 1;
     this.consumedMeteredBytes += record.meteredBytes();
   }

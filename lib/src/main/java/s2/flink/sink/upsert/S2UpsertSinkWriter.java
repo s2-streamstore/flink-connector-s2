@@ -48,8 +48,8 @@ class S2UpsertSinkWriter extends S2SinkWriter<RowData> {
                   Optional.ofNullable(Iterables.get(record.headers, 0, null))
                       .flatMap(
                           header ->
-                              header.name().equals(KEY_NAME)
-                                  ? Optional.of(header.value())
+                              header.name.equals(KEY_NAME)
+                                  ? Optional.of(header.value)
                                   : Optional.empty())
                       .orElse(ByteString.copyFromUtf8(String.valueOf(idx)));
               return Map.entry(key, Map.entry(idx, record));

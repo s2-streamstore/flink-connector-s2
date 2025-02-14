@@ -59,13 +59,13 @@ public class UpsertRowDataDeserializer implements S2ContextDeserializationSchema
 
     // TODO no casting
     final GenericRowData key =
-        (GenericRowData) keyDeserializer.deserialize(record.headers().get(0).value().toByteArray());
+        (GenericRowData) keyDeserializer.deserialize(record.headers.get(0).value.toByteArray());
     final GenericRowData value =
-        (GenericRowData) valueDeserializer.deserialize(record.body().toByteArray());
+        (GenericRowData) valueDeserializer.deserialize(record.body.toByteArray());
 
     // TODO search for proper header
     final RowKind recovered;
-    final var action = record.headers().get(1).value();
+    final var action = record.headers.get(1).value;
     if (action.equals(FLAG_UPDATE)) {
       recovered = RowKind.UPDATE_AFTER;
     } else if (action.equals(FLAG_DELETE)) {

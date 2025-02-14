@@ -3,6 +3,7 @@ group = "org.example"
 plugins {
     application
     java
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 repositories {
@@ -19,13 +20,15 @@ repositories {
     }
 }
 
-val flinkVersion = "1.19.1"
+val flinkVersion = "1.20.0"
 val grpcVersion = "1.64.0"
 var log4jVersion = "2.17.1"
-var s2Version = "0.0.12"
+var s2Version = "0.0.13-SNAPSHOT"
 
 dependencies {
     implementation(project(":lib"))
+    implementation("com.google.guava:guava:33.4.0-jre")
+    compileOnly("com.amazonaws:aws-kinesisanalytics-runtime:1.2.0")
     implementation("dev.s2:s2-sdk:$s2Version")
     implementation("org.apache.flink:flink-table-api-java-bridge:$flinkVersion")
     implementation("org.apache.flink:flink-clients:$flinkVersion")
@@ -43,9 +46,42 @@ tasks.test {
     useJUnitPlatform()
 }
 
+val executables = listOf(
+    "org.example.app.eventstream.EventSpoofer",
+    "org.example.app.eventstream.EventStream",
+)
+
+executables.forEach { mainClassName ->
+    val name = mainClassName.substringAfterLast('.')
+    tasks.register<JavaExec>("run$name") {
+        group = "application"
+        description = "Run the $name demo app."
+        classpath = sourceSets["main"].runtimeClasspath
+        mainClass.set(mainClassName)
+    }
+}
 java {
     withSourcesJar()
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(11))
     }
+}
+
+application {
+    mainClass.set("org.example.app.eventstream.EventStreamJob")
+}
+
+tasks.shadowJar {
+    archiveBaseName.set("testApp")
+    archiveVersion.set("")
+    archiveClassifier.set("")
+
+    dependencies {
+        exclude(dependency("org.apache.flink:force-shading:"))
+        exclude(dependency("com.google.code.findbugs:jsr305:"))
+        exclude(dependency("org.slf4j:"))
+        exclude(dependency("log4j:"))
+    }
+    mergeServiceFiles()
+
 }

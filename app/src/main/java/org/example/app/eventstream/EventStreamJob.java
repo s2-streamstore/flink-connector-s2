@@ -1,17 +1,17 @@
-package org.example.app;
+package org.example.app.eventstream;
 
 import static s2.flink.config.S2ClientConfig.S2_AUTH_TOKEN;
 import static s2.flink.config.S2SinkConfig.S2_SINK_BASIN;
 import static s2.flink.config.S2SinkConfig.S2_SINK_STREAM;
 import static s2.flink.config.S2SourceConfig.S2_SOURCE_BASIN;
 import static s2.flink.config.S2SourceConfig.S2_SOURCE_SPLIT_START_BEHAVIOR;
-import static s2.flink.config.S2SourceConfig.S2_SOURCE_STREAMS;
 import static s2.flink.config.S2SourceConfig.S2_SOURCE_STREAM_DISCOVERY_CADENCE_MS;
 import static s2.flink.config.S2SourceConfig.S2_SOURCE_STREAM_DISCOVERY_PREFIX;
 
+import com.amazonaws.services.kinesisanalytics.runtime.KinesisAnalyticsRuntime;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -24,6 +24,7 @@ import org.apache.flink.configuration.CheckpointingOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.RestartStrategyOptions;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.environment.LocalStreamEnvironment;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.EnvironmentSettings;
@@ -34,9 +35,32 @@ import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import s2.flink.source.S2Source;
 import s2.flink.source.split.SplitStartBehavior;
 
-public class EventStream {
+public class EventStreamJob {
 
-  private static final String WORKING_BASIN = "sgb-eventstream-t1";
+  private static final String STREAM_EVENTSTREAM_PREFIX = "host/";
+  private static final String STREAM_CONVERTING_QUERIES = "rollup/converting-queries-per-item";
+  private static final String STREAM_TOP_QUERY_PER_ITEM =
+      "feature/top-5-converting-queries-per-item";
+
+  private static String getAuthToken(StreamExecutionEnvironment env) throws IOException {
+    if (env instanceof LocalStreamEnvironment) {
+      return System.getenv("S2_AUTH_TOKEN");
+    } else {
+      return KinesisAnalyticsRuntime.getApplicationProperties()
+          .get("eventstream")
+          .getProperty("s2.auth-token");
+    }
+  }
+
+  private static String getWorkingBasin(StreamExecutionEnvironment env) throws IOException {
+    if (env instanceof LocalStreamEnvironment) {
+      return System.getenv("S2_BASIN");
+    } else {
+      return KinesisAnalyticsRuntime.getApplicationProperties()
+          .get("eventstream")
+          .getProperty("s2.basin");
+    }
+  }
 
   public static void main(String[] args) throws Exception {
 
@@ -46,18 +70,22 @@ public class EventStream {
     config.set(RestartStrategyOptions.RESTART_STRATEGY_FIXED_DELAY_DELAY, Duration.ofSeconds(10));
     config.set(CheckpointingOptions.CHECKPOINT_STORAGE, "jobmanager");
 
-    final StreamExecutionEnvironment env =
-        StreamExecutionEnvironment.createLocalEnvironment(config);
+    final var env =
+        StreamExecutionEnvironment.getExecutionEnvironment(config).enableCheckpointing(5000);
     final StreamTableEnvironment tEnv =
         StreamTableEnvironment.create(env, EnvironmentSettings.inStreamingMode());
+    final String authToken = getAuthToken(env);
+    final String workingBasin = getWorkingBasin(env);
+
+    final var statementSet = tEnv.createStatementSet();
 
     final Configuration s2DataStreamSourceConfig =
         new Configuration()
-            .set(S2_AUTH_TOKEN, System.getenv("S2_AUTH_TOKEN"))
-            .set(S2_SOURCE_BASIN, WORKING_BASIN)
-            .set(S2_SOURCE_STREAM_DISCOVERY_PREFIX, "host/")
+            .set(S2_AUTH_TOKEN, authToken)
+            .set(S2_SOURCE_BASIN, workingBasin)
+            .set(S2_SOURCE_STREAM_DISCOVERY_PREFIX, STREAM_EVENTSTREAM_PREFIX)
             .set(S2_SOURCE_STREAM_DISCOVERY_CADENCE_MS, 30_000L)
-            .set(S2_SOURCE_SPLIT_START_BEHAVIOR, SplitStartBehavior.NEXT);
+            .set(S2_SOURCE_SPLIT_START_BEHAVIOR, SplitStartBehavior.FIRST);
 
     DataStream<String> ds =
         env.fromSource(
@@ -72,7 +100,7 @@ public class EventStream {
                     (value, out) -> {
                       try {
                         final Map<String, String> map =
-                            Arrays.stream(value.split(";", 3))
+                            Arrays.stream(value.split(";"))
                                 .map(
                                     kv -> {
                                       var kvElems = kv.split("=", 2);
@@ -89,9 +117,11 @@ public class EventStream {
                                 Optional.ofNullable(map.get("item"))
                                     .map(Integer::parseInt)
                                     .orElse(null),
-                                map.get("search")));
+                                map.get("search"),
+                                Long.parseLong(map.get("epoch_ms"))));
 
                       } catch (Exception e) {
+                        System.err.println(e.getMessage());
                         // Silently discard any bad data.
                       }
                     })
@@ -105,34 +135,35 @@ public class EventStream {
                 .column("action", DataTypes.STRING().notNull())
                 .column("itemId", DataTypes.INT())
                 .column("query", DataTypes.STRING())
-                .columnByExpression("pt", "PROCTIME()")
+                .column("epochMs", DataTypes.BIGINT().notNull())
+                .columnByExpression("eventTime", "TO_TIMESTAMP_LTZ(epochMs, 3)")
+                .watermark("eventTime", "eventTime - INTERVAL '5' SECONDS")
                 .build());
 
-    tEnv.createTemporaryView("userEventsTable", userEventsTable);
+    tEnv.createTemporaryView("UserEventsTable", userEventsTable);
 
-    String query =
-        """
-    SELECT
-      userId,
-      matchedSearchQuery,
-      matchedItemId
-    FROM
-      userEventsTable
-      MATCH_RECOGNIZE (
-        PARTITION BY userId
-        ORDER BY pt
-        MEASURES
-          A.query AS matchedSearchQuery,
-          C.itemId AS matchedItemId
-        ONE ROW PER MATCH
-        AFTER MATCH SKIP TO NEXT ROW
-        PATTERN (A B C) WITHIN INTERVAL '10' MINUTES
-        DEFINE
-          A AS A.action = 'search',
-          B AS B.action = 'cart',
-          C AS C.action = 'buy'
-      )
-    """;
+    final String query =
+        "SELECT\n"
+            + "  userId,\n"
+            + "  matchedSearchQuery,\n"
+            + "  matchedItemId\n"
+            + "FROM\n"
+            + "  UserEventsTable\n"
+            + "  MATCH_RECOGNIZE (\n"
+            + "    PARTITION BY userId\n"
+            + "    ORDER BY eventTime\n"
+            + "    MEASURES\n"
+            + "      A.query AS matchedSearchQuery,\n"
+            + "      D.itemId AS matchedItemId\n"
+            + "    ONE ROW PER MATCH\n"
+            + "    AFTER MATCH SKIP TO NEXT ROW\n"
+            + "    PATTERN (A B C D) WITHIN INTERVAL '10' MINUTES\n"
+            + "    DEFINE\n"
+            + "      A AS A.action = 'search',\n"
+            + "      B AS B.action = 'view',\n"
+            + "      C AS C.action = 'cart',\n"
+            + "      D AS D.action = 'buy'\n"
+            + "  )";
 
     final var itemQueries =
         Schema.newBuilder()
@@ -147,50 +178,37 @@ public class EventStream {
         TableDescriptor.forConnector("s2")
             .schema(itemQueries)
             .format("json")
-            .option(S2_AUTH_TOKEN, System.getenv("S2_AUTH_TOKEN"))
-            .option(S2_SINK_BASIN, WORKING_BASIN)
-            .option(S2_SINK_STREAM, "tables/item-queries-1")
+            .option(S2_AUTH_TOKEN, authToken)
+            .option(S2_SINK_BASIN, workingBasin)
+            .option(S2_SINK_STREAM, STREAM_CONVERTING_QUERIES)
             .build());
 
     Table result = tEnv.sqlQuery(query);
-    result.insertInto("ItemQueriesSink").execute();
+    statementSet.addInsert("ItemQueriesSink", result);
+    tEnv.createTemporaryView("ItemQueries", result);
 
-    tEnv.createTemporaryTable(
-        "ItemQueriesSource",
-        TableDescriptor.forConnector("s2")
-            .schema(itemQueries)
-            .format("json")
-            .option(S2_AUTH_TOKEN, System.getenv("S2_AUTH_TOKEN"))
-            .option(S2_SOURCE_BASIN, WORKING_BASIN)
-            .option(S2_SOURCE_STREAMS, List.of("tables/item-queries-1"))
-            .option(S2_SOURCE_SPLIT_START_BEHAVIOR, SplitStartBehavior.NEXT)
-            .build());
+    final String top5ConvertingQueryPerItem =
+        "WITH ranked AS (\n"
+            + "  SELECT\n"
+            + "    matchedItemId AS item,\n"
+            + "    matchedSearchQuery AS top_query,\n"
+            + "    ROW_NUMBER() OVER (PARTITION BY matchedItemId ORDER BY COUNT(*) DESC) AS rn\n"
+            + "  FROM ItemQueries\n"
+            + "  GROUP BY matchedItemId, matchedSearchQuery\n"
+            + ")\n"
+            + "SELECT \n"
+            + "  item, \n"
+            + "  ARRAY_AGG(top_query ORDER BY rn ASC) AS top_queries\n"
+            + "FROM ranked\n"
+            + "WHERE rn <= 5\n"
+            + "GROUP BY item";
 
-    var topQueryPerItem =
-        """
-  SELECT item, top_query, weight
-  FROM (
-    SELECT
-      matchedItemId as item,
-      matchedSearchQuery as top_query,
-      COUNT(*) AS weight,
-      ROW_NUMBER() OVER (
-        PARTITION BY matchedItemId
-        ORDER BY COUNT(*) DESC
-      ) AS rn
-    FROM ItemQueriesSource
-    GROUP BY matchedItemId, matchedSearchQuery
-  )
-  WHERE rn = 1
-""";
-
-    Table grouped = tEnv.sqlQuery(topQueryPerItem);
+    Table grouped = tEnv.sqlQuery(top5ConvertingQueryPerItem);
 
     final var topQueryPerItemSchema =
         Schema.newBuilder()
             .column("item", DataTypes.BIGINT().notNull())
-            .column("top_query", DataTypes.STRING().notNull())
-            .column("weight", DataTypes.BIGINT().notNull())
+            .column("top_queries", DataTypes.ARRAY(DataTypes.STRING()))
             .primaryKey("item")
             .build();
 
@@ -199,12 +217,13 @@ public class EventStream {
         TableDescriptor.forConnector("s2-upsert")
             .schema(topQueryPerItemSchema)
             .format("json")
-            .option(S2_AUTH_TOKEN, System.getenv("S2_AUTH_TOKEN"))
-            .option(S2_SINK_BASIN, WORKING_BASIN)
-            .option(S2_SINK_STREAM, "tables/top-query-per-item-1")
+            .option(S2_AUTH_TOKEN, authToken)
+            .option(S2_SINK_BASIN, workingBasin)
+            .option(S2_SINK_STREAM, STREAM_TOP_QUERY_PER_ITEM)
             .build());
 
-    grouped.insertInto("TopQueryPerItemSink").execute();
+    statementSet.addInsert("TopQueryPerItemSink", grouped);
+    statementSet.execute();
   }
 
   public static class UserInteraction {
@@ -213,21 +232,24 @@ public class EventStream {
     public String action;
     public Integer itemId;
     public String query;
+    public Long epochMs;
 
-    // Required for flink POJO
     public UserInteraction() {}
 
-    public UserInteraction(String action, Integer userId, Integer itemId, String query) {
+    public UserInteraction(
+        String action, Integer userId, Integer itemId, String query, Long epochMs) {
       this.action = action;
       this.userId = userId;
       this.itemId = itemId;
       this.query = query;
+      this.epochMs = epochMs;
     }
 
     @Override
     public String toString() {
       return String.format(
-          "action=%s, userId=%s, itemId=%s, query=%s", action, userId, itemId, query);
+          "action=%s, userId=%s, itemId=%s, query=%s, epochMs=%s",
+          action, userId, itemId, query, epochMs);
     }
   }
 }

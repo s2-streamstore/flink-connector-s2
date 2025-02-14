@@ -91,12 +91,14 @@ public class S2SplitReader implements SplitReader<SequencedRecord, S2SourceSplit
         .get()
         .map(
             resp -> {
-              if (resp instanceof Batch batch) {
+              if (resp instanceof Batch) {
+                final Batch batch = (Batch) resp;
                 return new RecordsBySplits<>(
-                    Map.of(split.splitId(), batch.sequencedRecordBatch().records()), Set.of());
-              } else if (resp instanceof FirstSeqNum firstSeqNum) {
+                    Map.of(split.splitId(), batch.sequencedRecordBatch.records), Set.of());
+              } else if (resp instanceof FirstSeqNum) {
+                final FirstSeqNum firstSeqNum = (FirstSeqNum) resp;
                 throw new RuntimeException("Should retry: firstSeqNum=" + firstSeqNum);
-              } else if (resp instanceof NextSeqNum nextSeqNum) {
+              } else if (resp instanceof NextSeqNum) {
                 throw new RuntimeException("Unexpected batch response.");
               }
               throw new RuntimeException("Unrecognized response.");
@@ -122,7 +124,8 @@ public class S2SplitReader implements SplitReader<SequencedRecord, S2SourceSplit
   @Override
   public void handleSplitsChanges(SplitsChange<S2SourceSplit> splitsChanges) {
     LOG.debug("handleSplitsChanges: {}", splitsChanges);
-    if (splitsChanges instanceof SplitsAddition<S2SourceSplit> addition) {
+    if (splitsChanges instanceof SplitsAddition) {
+      final SplitsAddition<S2SourceSplit> addition = (SplitsAddition<S2SourceSplit>) splitsChanges;
       addition
           .splits()
           .forEach(
@@ -134,58 +137,61 @@ public class S2SplitReader implements SplitReader<SequencedRecord, S2SourceSplit
                   // New split. Need to determine where to start our session, contingent on the
                   // split start behavior.
                   switch (split.startBehavior()) {
-                    case FIRST ->
-                        Futures.addCallback(
-                            StreamClient.newBuilder(this.s2Config, this.basinName, split.splitId())
-                                .withChannel(this.basinChannel)
-                                .withExecutor(this.executor)
-                                .build()
-                                .read(
-                                    ReadRequest.newBuilder()
-                                        .withStartSeqNum(0)
-                                        .withReadLimit(ReadLimit.count(1))
-                                        .build()),
-                            new FutureCallback<ReadOutput>() {
-                              @Override
-                              public void onSuccess(ReadOutput result) {
-                                if (result instanceof Batch batch) {
-                                  // No trimming. Start at 0.
-                                  splitsWithStart.push(Tuple2.of(0L, split));
-                                } else if (result instanceof FirstSeqNum firstSeqNum) {
-                                  // Trimming has occurred.
-                                  splitsWithStart.push(Tuple2.of(firstSeqNum.value(), split));
+                    case FIRST:
+                      Futures.addCallback(
+                          StreamClient.newBuilder(this.s2Config, this.basinName, split.splitId())
+                              .withChannel(this.basinChannel)
+                              .withExecutor(this.executor)
+                              .build()
+                              .read(
+                                  ReadRequest.newBuilder()
+                                      .withStartSeqNum(0)
+                                      .withReadLimit(ReadLimit.count(1))
+                                      .build()),
+                          new FutureCallback<ReadOutput>() {
+                            @Override
+                            public void onSuccess(ReadOutput result) {
+                              if (result instanceof Batch) {
+                                // No trimming. Start at 0.
+                                splitsWithStart.push(Tuple2.of(0L, split));
+                              } else if (result instanceof FirstSeqNum) {
+                                FirstSeqNum firstSeqNum = (FirstSeqNum) result;
+                                // Trimming has occurred.
+                                splitsWithStart.push(Tuple2.of(firstSeqNum.value, split));
 
-                                } else if (result instanceof NextSeqNum nextSeqNum) {
-                                  cachedError.set(
-                                      new RuntimeException("Unexpected nextSeqNum: " + nextSeqNum));
-                                }
+                              } else if (result instanceof NextSeqNum) {
+                                cachedError.set(
+                                    new RuntimeException("Unexpected nextSeqNum: " + result));
                               }
+                            }
 
-                              @Override
-                              public void onFailure(Throwable t) {
-                                cachedError.set(t);
-                              }
-                            },
-                            this.executor);
-                    case NEXT ->
-                        Futures.addCallback(
-                            StreamClient.newBuilder(this.s2Config, this.basinName, split.splitId())
-                                .withChannel(this.basinChannel)
-                                .withExecutor(this.executor)
-                                .build()
-                                .checkTail(),
-                            new FutureCallback<Long>() {
-                              @Override
-                              public void onSuccess(Long result) {
-                                splitsWithStart.push(Tuple2.of(result, split));
-                              }
+                            @Override
+                            public void onFailure(Throwable t) {
+                              cachedError.set(t);
+                            }
+                          },
+                          this.executor);
+                      break;
+                    case NEXT:
+                      Futures.addCallback(
+                          StreamClient.newBuilder(this.s2Config, this.basinName, split.splitId())
+                              .withChannel(this.basinChannel)
+                              .withExecutor(this.executor)
+                              .build()
+                              .checkTail(),
+                          new FutureCallback<Long>() {
+                            @Override
+                            public void onSuccess(Long result) {
+                              splitsWithStart.push(Tuple2.of(result, split));
+                            }
 
-                              @Override
-                              public void onFailure(Throwable t) {
-                                cachedError.set(t);
-                              }
-                            },
-                            this.executor);
+                            @Override
+                            public void onFailure(Throwable t) {
+                              cachedError.set(t);
+                            }
+                          },
+                          this.executor);
+                      break;
                   }
                 }
               });

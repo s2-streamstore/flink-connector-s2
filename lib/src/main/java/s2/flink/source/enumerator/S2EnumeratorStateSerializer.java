@@ -1,6 +1,7 @@
 package s2.flink.source.enumerator;
 
 import java.io.IOException;
+import java.util.stream.Collectors;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import s2.flink.internal.EnumeratorState;
 import s2.flink.source.split.S2SplitSerializer;
@@ -20,7 +21,9 @@ public class S2EnumeratorStateSerializer implements SimpleVersionedSerializer<S2
         .setInitialDistributionCompleted(obj.initialDistributionCompleted)
         .addAllStreams(obj.streams)
         .addAllUnassignedStreams(
-            obj.unassignedStreams.stream().map(S2SplitSerializer::intoProto).toList())
+            obj.unassignedStreams.stream()
+                .map(S2SplitSerializer::intoProto)
+                .collect(Collectors.toList()))
         .build()
         .toByteArray();
   }
@@ -35,7 +38,7 @@ public class S2EnumeratorStateSerializer implements SimpleVersionedSerializer<S2
         enumeratorState.getStreamsList(),
         enumeratorState.getUnassignedStreamsList().stream()
             .map(S2SplitSerializer::fromProto)
-            .toList(),
+            .collect(Collectors.toList()),
         enumeratorState.getInitialDistributionCompleted());
   }
 }
