@@ -5,7 +5,7 @@ import static s2.flink.config.S2SinkConfig.S2_SINK_BASIN;
 import static s2.flink.config.S2SinkConfig.S2_SINK_STREAM;
 import static s2.flink.config.S2SourceConfig.S2_SOURCE_BASIN;
 import static s2.flink.config.S2SourceConfig.S2_SOURCE_SPLIT_START_BEHAVIOR;
-import static s2.flink.config.S2SourceConfig.S2_SOURCE_STREAM_DISCOVERY_CADENCE_MS;
+import static s2.flink.config.S2SourceConfig.S2_SOURCE_STREAM_DISCOVERY_INTERVAL_MS;
 import static s2.flink.config.S2SourceConfig.S2_SOURCE_STREAM_DISCOVERY_PREFIX;
 
 import com.amazonaws.services.kinesisanalytics.runtime.KinesisAnalyticsRuntime;
@@ -32,6 +32,7 @@ import org.apache.flink.table.api.Schema;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableDescriptor;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
+import org.apache.flink.util.Preconditions;
 import s2.flink.source.S2Source;
 import s2.flink.source.split.SplitStartBehavior;
 
@@ -54,8 +55,14 @@ public class EventStreamJob {
         StreamExecutionEnvironment.getExecutionEnvironment(config).enableCheckpointing(5000);
     final StreamTableEnvironment tEnv =
         StreamTableEnvironment.create(env, EnvironmentSettings.inStreamingMode());
-    final String authToken = getAuthToken(env);
-    final String workingBasin = getWorkingBasin(env);
+
+    if (env instanceof LocalStreamEnvironment) {
+      env.setParallelism(4);
+    }
+    final String authToken =
+        Preconditions.checkNotNull(getAuthToken(env), "auth token must be supplied");
+    final String workingBasin =
+        Preconditions.checkNotNull(getWorkingBasin(env), "basin must be supplied");
 
     final var statementSet = tEnv.createStatementSet();
 
@@ -64,7 +71,7 @@ public class EventStreamJob {
             .set(S2_AUTH_TOKEN, authToken)
             .set(S2_SOURCE_BASIN, workingBasin)
             .set(S2_SOURCE_STREAM_DISCOVERY_PREFIX, STREAM_EVENTSTREAM_PREFIX)
-            .set(S2_SOURCE_STREAM_DISCOVERY_CADENCE_MS, 30_000L)
+            .set(S2_SOURCE_STREAM_DISCOVERY_INTERVAL_MS, 30_000L)
             .set(S2_SOURCE_SPLIT_START_BEHAVIOR, SplitStartBehavior.FIRST);
 
     DataStream<String> ds =
@@ -87,7 +94,6 @@ public class EventStreamJob {
                                       return Map.entry(kvElems[0], kvElems[1]);
                                     })
                                 .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
-                        // Search event.
                         out.collect(
                             new UserInteraction(
                                 Optional.ofNullable(map.get("action")).orElse("search"),
@@ -102,7 +108,6 @@ public class EventStreamJob {
 
                       } catch (Exception e) {
                         System.err.println(e.getMessage());
-                        // Silently discard any bad data.
                       }
                     })
             .returns(new TypeHint<UserInteraction>() {});

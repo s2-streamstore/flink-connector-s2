@@ -17,6 +17,9 @@ import org.apache.flink.table.connector.source.DynamicTableSource;
 import org.apache.flink.table.connector.source.ScanTableSource;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.DataType;
+import org.apache.flink.util.Preconditions;
+import s2.flink.config.S2ClientConfig;
+import s2.flink.config.S2SourceConfig;
 import s2.flink.source.S2Source;
 
 public class S2UpsertDynamicTableSource implements ScanTableSource {
@@ -27,8 +30,8 @@ public class S2UpsertDynamicTableSource implements ScanTableSource {
   private final DataType producedDataType;
   private final Tuple2<int[], int[]> kvRowIndices;
 
-  public S2UpsertDynamicTableSource(
-      @Nullable DataType physicalDataType,
+  private S2UpsertDynamicTableSource(
+      DataType physicalDataType,
       Configuration sourceConfig,
       DecodingFormat<DeserializationSchema<RowData>> decodingFormat,
       DataType producedDataType,
@@ -38,6 +41,10 @@ public class S2UpsertDynamicTableSource implements ScanTableSource {
     this.decodingFormat = decodingFormat;
     this.producedDataType = producedDataType;
     this.kvRowIndices = kvRowIndices;
+  }
+
+  public static S2UpsertDynamicTableSourceBuilder newBuilder() {
+    return new S2UpsertDynamicTableSourceBuilder();
   }
 
   @Override
@@ -69,10 +76,10 @@ public class S2UpsertDynamicTableSource implements ScanTableSource {
       @Override
       public DataStream<RowData> produceDataStream(
           ProviderContext providerContext, StreamExecutionEnvironment execEnv) {
-
-        final S2Source<RowData> source = new S2Source<>(sourceConfig, upsertDeserializer);
-
-        return execEnv.fromSource(source, WatermarkStrategy.noWatermarks(), "S2UpsertSource");
+        return execEnv.fromSource(
+            new S2Source<RowData>(sourceConfig, upsertDeserializer),
+            WatermarkStrategy.noWatermarks(),
+            "S2UpsertSource");
       }
 
       @Override
@@ -95,11 +102,63 @@ public class S2UpsertDynamicTableSource implements ScanTableSource {
 
   @Override
   public DynamicTableSource copy() {
-    return null;
+    return new S2UpsertDynamicTableSource(
+        physicalDataType, sourceConfig, decodingFormat, producedDataType, kvRowIndices);
   }
 
   @Override
   public String asSummaryString() {
     return "S2UpsertDynamicTableSource";
+  }
+
+  public static class S2UpsertDynamicTableSourceBuilder {
+
+    private DecodingFormat<DeserializationSchema<RowData>> decodingFormat;
+    private DataType physicalDataType;
+    private Configuration sourceConfig;
+    private DataType producedDataType;
+    private int[] keyIndices = new int[0];
+    private int[] valueIndices = new int[0];
+
+    public S2UpsertDynamicTableSourceBuilder setDecodingFormat(
+        DecodingFormat<DeserializationSchema<RowData>> decodingFormat) {
+      this.decodingFormat = decodingFormat;
+      return this;
+    }
+
+    public S2UpsertDynamicTableSourceBuilder setPhysicalDataType(DataType physicalDataType) {
+      this.physicalDataType = physicalDataType;
+      return this;
+    }
+
+    public S2UpsertDynamicTableSourceBuilder setSourceConfig(Configuration sourceConfig) {
+      this.sourceConfig = sourceConfig;
+      return this;
+    }
+
+    public S2UpsertDynamicTableSourceBuilder setProducedDataType(DataType producedDataType) {
+      this.producedDataType = producedDataType;
+      return this;
+    }
+
+    public S2UpsertDynamicTableSourceBuilder setKeyValueRowIndices(
+        int[] keyIndices, int[] valueIndices) {
+      this.keyIndices = keyIndices;
+      this.valueIndices = valueIndices;
+      return this;
+    }
+
+    public S2UpsertDynamicTableSource build() {
+      Preconditions.checkArgument(keyIndices.length > 0);
+      Preconditions.checkArgument(valueIndices.length > 0);
+      return new S2UpsertDynamicTableSource(
+          Preconditions.checkNotNull(physicalDataType, "physicalDataType must be provided"),
+          S2SourceConfig.validateForSource(
+              S2ClientConfig.validateForSDKConfig(
+                  Preconditions.checkNotNull(sourceConfig, "sourceConfig must be provided"))),
+          Preconditions.checkNotNull(decodingFormat, "decodingFormat must be provided"),
+          Preconditions.checkNotNull(producedDataType, "producedDataType must be provided"),
+          Tuple2.of(keyIndices, valueIndices));
+    }
   }
 }

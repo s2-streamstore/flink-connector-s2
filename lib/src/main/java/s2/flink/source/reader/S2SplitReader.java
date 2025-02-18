@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.connector.base.source.reader.RecordsBySplits;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
@@ -48,12 +48,12 @@ public class S2SplitReader implements SplitReader<SequencedRecord, S2SourceSplit
   private final Config s2Config;
   private final String basinName;
   private final BasinChannel basinChannel;
-  private final Configuration sourceConfig;
+  private final ReadableConfig sourceConfig;
   private final ScheduledThreadPoolExecutor executor;
   private final AtomicReference<Throwable> cachedError = new AtomicReference<>();
   private int splitReaderIndex = 0;
 
-  public S2SplitReader(Configuration sourceConfig) {
+  public S2SplitReader(ReadableConfig sourceConfig) {
     LOG.debug("split reader start");
     this.sourceConfig = sourceConfig;
     this.executor = new ScheduledThreadPoolExecutor(1);

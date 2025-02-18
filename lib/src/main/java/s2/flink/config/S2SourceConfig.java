@@ -22,8 +22,8 @@ public class S2SourceConfig {
           .stringType()
           .noDefaultValue();
 
-  public static final ConfigOption<Long> S2_SOURCE_STREAM_DISCOVERY_CADENCE_MS =
-      org.apache.flink.configuration.ConfigOptions.key("s2.source.discovery-cadence-ms")
+  public static final ConfigOption<Long> S2_SOURCE_STREAM_DISCOVERY_INTERVAL_MS =
+      org.apache.flink.configuration.ConfigOptions.key("s2.source.discovery-interval-ms")
           .longType()
           .noDefaultValue();
 
@@ -37,8 +37,7 @@ public class S2SourceConfig {
           .intType()
           .defaultValue(1024 * 1024 * 10);
 
-  public static ReadableConfig validateForSource(ReadableConfig config) {
-    // TODO
+  public static <T extends ReadableConfig> T validateForSource(T config) {
     if (config.getOptional(S2_SOURCE_STREAMS).isEmpty()
         && config.getOptional(S2_SOURCE_STREAM_DISCOVERY_PREFIX).isEmpty()) {
       throw new IllegalArgumentException(

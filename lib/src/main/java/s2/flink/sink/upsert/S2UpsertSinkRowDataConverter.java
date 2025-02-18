@@ -1,5 +1,8 @@
 package s2.flink.sink.upsert;
 
+import static s2.flink.record.Upsert.keyDelete;
+import static s2.flink.record.Upsert.keyUpdate;
+
 import com.google.protobuf.ByteString;
 import java.util.List;
 import org.apache.flink.api.common.serialization.SerializationSchema;
@@ -22,11 +25,6 @@ import s2.types.Header;
 
 public class S2UpsertSinkRowDataConverter implements ElementConverter<RowData, AppendRecord> {
 
-  public static final ByteString KEY_NAME = ByteString.copyFromUtf8("@key");
-  private static final Header ACTION_UPDATE =
-      new Header(ByteString.copyFromUtf8("@action"), ByteString.copyFromUtf8("u"));
-  private static final Header ACTION_DELETE =
-      new Header(ByteString.copyFromUtf8("@action"), ByteString.copyFromUtf8("d"));
   private final FieldGetter[] keyFieldGetters;
   private final FieldGetter[] valueFieldGetters;
   private final SerializationSchema<RowData> keySerializer;
@@ -56,13 +54,13 @@ public class S2UpsertSinkRowDataConverter implements ElementConverter<RowData, A
     final List<Header> headers;
     if (inputKind == RowKind.DELETE) {
       serializedBody = ByteString.empty();
-      headers = List.of(new Header(KEY_NAME, serializedKey), ACTION_DELETE);
+      headers = keyDelete(serializedKey);
     } else if (inputKind == RowKind.INSERT || inputKind == RowKind.UPDATE_AFTER) {
       serializedBody =
           ByteString.copyFrom(
               valueSerializer.serialize(
                   createProjectedRow(combinedElement, RowKind.INSERT, valueFieldGetters)));
-      headers = List.of(new Header(KEY_NAME, serializedKey), ACTION_UPDATE);
+      headers = keyUpdate(serializedKey);
     } else {
       throw new IllegalArgumentException("Unsupported row kind: " + inputKind);
     }
@@ -70,7 +68,7 @@ public class S2UpsertSinkRowDataConverter implements ElementConverter<RowData, A
     return AppendRecord.newBuilder().withHeaders(headers).withBody(serializedBody).build();
   }
 
-  static RowData createProjectedRow(
+  static GenericRowData createProjectedRow(
       RowData consumedRow, RowKind kind, RowData.FieldGetter[] fieldGetters) {
     final int arity = fieldGetters.length;
     final GenericRowData genericRowData = new GenericRowData(kind, arity);

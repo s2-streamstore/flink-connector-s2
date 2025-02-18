@@ -1,15 +1,13 @@
 package s2.flink.sink.upsert;
 
-import static s2.flink.sink.upsert.S2UpsertSinkRowDataConverter.KEY_NAME;
+import static s2.flink.record.Upsert.extractKeyAndAction;
 
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Streams;
 import com.google.protobuf.ByteString;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.apache.flink.api.connector.sink2.WriterInitContext;
@@ -38,19 +36,13 @@ class S2UpsertSinkWriter extends S2SinkWriter<RowData> {
     super.submitRequestEntries(upsertReduce(requestEntries), requestToRetry);
   }
 
-  // TODO
   private static List<AppendRecord> upsertReduce(List<AppendRecord> requestEntries) {
     return Streams.mapWithIndex(
             requestEntries.stream(),
             (record, idx) -> {
               final var key =
-                  // TODO should not be position based
-                  Optional.ofNullable(Iterables.get(record.headers, 0, null))
-                      .flatMap(
-                          header ->
-                              header.name.equals(KEY_NAME)
-                                  ? Optional.of(header.value)
-                                  : Optional.empty())
+                  extractKeyAndAction(record.headers)
+                      .map(kv -> kv.f0)
                       .orElse(ByteString.copyFromUtf8(String.valueOf(idx)));
               return Map.entry(key, Map.entry(idx, record));
             })

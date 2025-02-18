@@ -66,8 +66,11 @@ public class S2ClientConfig {
     return builder.build();
   }
 
-  public static ReadableConfig validateForSDKConfig(ReadableConfig config) {
-    // TODO validate
+  public static <T extends ReadableConfig> T validateForSDKConfig(T config) {
+    if (config.getOptional(S2_AUTH_TOKEN).isEmpty()) {
+      throw new IllegalArgumentException("S2 auth token is required.");
+    }
+    // TODO bound checking
     return config;
   }
 }

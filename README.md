@@ -109,26 +109,29 @@ s2 read s2://my-basin/my-change-log --start-seq-num 43042 --format json
 }
 ```
 
-See the example
-in [S2UpsertTable](https://github.com/s2-streamstore/flink-connector-s2/blob/main/app/src/main/java/org/example/app/S2UpsertTable.java).
-
 ### Configuration
 
-| name                       | required | unit   | type   | constraints                | via |
-|----------------------------|----------|--------|--------|----------------------------|-----|
-| s2.basin                   | yes      | -      | string |                            |     |
-| s2.stream                  | yes      | -      | string |                            |     |
-| s2.auth-token              | yes      | -      | string |                            |     |
-| s2.append-retry-policy     |          | -      | string | "ALL" or "NO_SIDE_EFFECTS" |     |
-| s2.endpoints.account       |          | -      | string | valid url                  |     |
-| s2.endpoints.basin         |          | -      | string | valid url                  |     |
-| s2.max-retries             |          | count  | int    |                            |     |
-| s2.retry-delay-ms          |          | millis | int    |                            |     |
-| sink.batch.max-size        |          | count  | int    | 0 <= 1000                  |     |
-| sink.flush-buffer.size     |          | bytes  | long   |                            |     |
-| sink.flush-buffer.timeout  |          | millis | long   |                            |     |
-| sink.requests.max-buffered |          | count  | int    |                            |     |
-| sink.requests.max-inflight |          | count  | int    |                            |     |
+| namespace | name                      | required                          | about | const                          | value                                    |
+|-----------|---------------------------|-----------------------------------|-------|--------------------------------|------------------------------------------|
+| s2.client | auth-token                | yes                               |       | s2.flink.config.S2ClientConfig | String                                   |
+| s2.client | endpoints-cloud           | no                                |       | s2.flink.config.S2ClientConfig | String                                   |
+| s2.client | endpoints-account         | no                                |       | s2.flink.config.S2ClientConfig | String                                   |
+| s2.client | endpoints-basin           | no                                |       | s2.flink.config.S2ClientConfig | String                                   |
+| s2.client | append-retry-policy       | no                                |       | s2.flink.config.S2ClientConfig | s2.config.AppendRetryPolicy              |
+| s2.client | max-retries               | no                                |       | s2.flink.config.S2ClientConfig | int                                      |
+| s2.client | retry-delay-ms            | no                                |       | s2.flink.config.S2ClientConfig | long                                     |
+| s2.sink   | basin                     | yes                               |       | s2.flink.config.S2SinkConfig   | String                                   |
+| s2.sink   | stream                    | yes                               |       | s2.flink.config.S2SinkConfig   | String                                   |
+| s2.source | basin                     | yes                               |       | s2.flink.config.S2SourceConfig | String                                   |
+| s2.source | streams                   | either this or `discovery-prefix` |       | s2.flink.config.S2SourceConfig | List<String>                             |
+| s2.source | discovery-prefix          | either this or `streams`          |       | s2.flink.config.S2SourceConfig | String                                   |
+| s2.source | discovery-interval-ms     | no                                |       | s2.flink.config.S2SourceConfig | long                                     |
+| s2.source | start-behavior            | no                                |       | s2.flink.config.S2SourceConfig | s2.flink.source.split.SplitStartBehavior |
+| s2.source | read-session-buffer-bytes | no                                |       | s2.flink.config.S2SourceConfig | int                                      |
+
+#### AsyncSink configuration
+
+These can also be supplied.
 
 ## Source
 
@@ -136,23 +139,7 @@ _In progress!_
 
 ## Demos
 
-### Eventstream
+See the [app](./app) submodule for some demo applications.
 
-#### Setup
-
-```bash
-export MY_BASIN="sgb-eventstream-t7"
-s2 create-basin "${MY_BASIN}"
-
-seq 0 9 \
-	| xargs -I {} echo "host/000{}" \
-	| xargs -I {} s2 create-stream "s2://${MY_BASIN}/{}" --storage-class standard -r 1w
-	
-s2 create-stream "s2://${MY_BASIN}/rollup/converting-queries-per-item" --storage-class standard -r 1w
-s2 create-stream "s2://${MY_BASIN}/feature/top-5-converting-queries-per-item" --storage-class standard -r 1w
-
-```
-
-Data spoofing.
 
 

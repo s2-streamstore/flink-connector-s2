@@ -1,6 +1,5 @@
 package s2.flink.table;
 
-import javax.annotation.Nullable;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.configuration.Configuration;
@@ -14,6 +13,9 @@ import org.apache.flink.table.connector.source.DynamicTableSource;
 import org.apache.flink.table.connector.source.ScanTableSource;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.DataType;
+import org.apache.flink.util.Preconditions;
+import s2.flink.config.S2ClientConfig;
+import s2.flink.config.S2SourceConfig;
 import s2.flink.source.S2Source;
 
 public class S2DynamicTableSource implements ScanTableSource {
@@ -23,8 +25,8 @@ public class S2DynamicTableSource implements ScanTableSource {
   private final Configuration sourceConfig;
   private final DataType producedDataType;
 
-  public S2DynamicTableSource(
-      @Nullable DataType physicalDataType,
+  private S2DynamicTableSource(
+      DataType physicalDataType,
       Configuration sourceConfig,
       DecodingFormat<DeserializationSchema<RowData>> decodingFormat,
       DataType producedDataType) {
@@ -32,6 +34,10 @@ public class S2DynamicTableSource implements ScanTableSource {
     this.sourceConfig = sourceConfig;
     this.decodingFormat = decodingFormat;
     this.producedDataType = producedDataType;
+  }
+
+  public static S2DynamicTableSourceBuilder newBuilder() {
+    return new S2DynamicTableSourceBuilder();
   }
 
   @Override
@@ -49,9 +55,10 @@ public class S2DynamicTableSource implements ScanTableSource {
       public DataStream<RowData> produceDataStream(
           ProviderContext providerContext, StreamExecutionEnvironment execEnv) {
 
-        final S2Source<RowData> source = new S2Source<>(sourceConfig, deserializationSchema);
-
-        return execEnv.fromSource(source, WatermarkStrategy.noWatermarks(), "S2Source");
+        return execEnv.fromSource(
+            new S2Source<RowData>(sourceConfig, deserializationSchema),
+            WatermarkStrategy.noWatermarks(),
+            "S2Source");
       }
 
       @Override
@@ -63,11 +70,51 @@ public class S2DynamicTableSource implements ScanTableSource {
 
   @Override
   public DynamicTableSource copy() {
-    return null;
+    return new S2DynamicTableSource(
+        producedDataType, sourceConfig, decodingFormat, producedDataType);
   }
 
   @Override
   public String asSummaryString() {
     return "S2DynamicTableSource";
+  }
+
+  public static class S2DynamicTableSourceBuilder {
+
+    private DecodingFormat<DeserializationSchema<RowData>> decodingFormat;
+    private DataType physicalDataType;
+    private Configuration sourceConfig;
+    private DataType producedDataType;
+
+    public S2DynamicTableSourceBuilder setDecodingFormat(
+        DecodingFormat<DeserializationSchema<RowData>> decodingFormat) {
+      this.decodingFormat = decodingFormat;
+      return this;
+    }
+
+    public S2DynamicTableSourceBuilder setPhysicalDataType(DataType physicalDataType) {
+      this.physicalDataType = physicalDataType;
+      return this;
+    }
+
+    public S2DynamicTableSourceBuilder setSourceConfig(Configuration sourceConfig) {
+      this.sourceConfig = sourceConfig;
+      return this;
+    }
+
+    public S2DynamicTableSourceBuilder setProducedDataType(DataType producedDataType) {
+      this.producedDataType = producedDataType;
+      return this;
+    }
+
+    public S2DynamicTableSource build() {
+      return new S2DynamicTableSource(
+          Preconditions.checkNotNull(physicalDataType, "physicalDataType must be provided"),
+          S2SourceConfig.validateForSource(
+              S2ClientConfig.validateForSDKConfig(
+                  Preconditions.checkNotNull(sourceConfig, "sourceConfig must be provided"))),
+          Preconditions.checkNotNull(decodingFormat, "decodingFormat must be provided"),
+          Preconditions.checkNotNull(producedDataType, "producedDataType must be provided"));
+    }
   }
 }

@@ -48,7 +48,8 @@ tasks.test {
 
 val executables = listOf(
     "org.example.app.eventstream.EventSpoofer",
-    "org.example.app.eventstream.EventStream",
+    "org.example.app.eventstream.EventStreamJob",
+    "org.example.app.eventstream.EventStreamWithContextJob",
 )
 
 executables.forEach { mainClassName ->
@@ -58,6 +59,7 @@ executables.forEach { mainClassName ->
         description = "Run the $name demo app."
         classpath = sourceSets["main"].runtimeClasspath
         mainClass.set(mainClassName)
+        jvmArgs("--add-opens", "java.base/java.util=ALL-UNNAMED")
     }
 }
 java {

@@ -37,6 +37,6 @@ public class S2UpsertSinkBuilder extends S2SinkBuilder<RowData> {
             (long) S2AsyncSinkConfig.MAX_RECORD_SIZE_BYTES,
             v -> v > 0 && v <= S2AsyncSinkConfig.MAX_RECORD_SIZE_BYTES),
         this.elementConverter.get(),
-        validateForSDKConfig(validateForSink(clientConfiguration.get())));
+        validateForSink(validateForSDKConfig(clientConfiguration.get())));
   }
 }

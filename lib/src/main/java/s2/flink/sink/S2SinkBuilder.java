@@ -54,7 +54,7 @@ public class S2SinkBuilder<InputT>
             (long) S2AsyncSinkConfig.MAX_RECORD_SIZE_BYTES,
             v -> v > 0 && v <= S2AsyncSinkConfig.MAX_RECORD_SIZE_BYTES),
         this.elementConverter.get(),
-        validateForSDKConfig(validateForSink(clientConfiguration.get())));
+        validateForSink(validateForSDKConfig(clientConfiguration.get())));
   }
 
   protected static <T> T defaultOrChecked(T candidate, T defaultValue, Predicate<T> validator) {

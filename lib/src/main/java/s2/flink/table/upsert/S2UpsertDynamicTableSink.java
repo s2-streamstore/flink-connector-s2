@@ -62,13 +62,10 @@ public class S2UpsertDynamicTableSink extends AsyncDynamicTableSink<AppendRecord
 
   @Override
   public SinkRuntimeProvider getSinkRuntimeProvider(Context context) {
-    // TODO Use a wrapped upsert serializer if enabled?
-    SerializationSchema<RowData> serializationSchema =
-        encodingFormat.createRuntimeEncoder(context, consumedDataType);
 
-    SerializationSchema<RowData> keySerializer =
+    final SerializationSchema<RowData> keySerializer =
         createSerialization(context, encodingFormat, this.kvRowIndices.f0);
-    SerializationSchema<RowData> valueSerializer =
+    final SerializationSchema<RowData> valueSerializer =
         createSerialization(context, encodingFormat, this.kvRowIndices.f1);
 
     final S2UpsertSinkBuilder builder = S2UpsertSink.newBuilder();
@@ -85,8 +82,8 @@ public class S2UpsertDynamicTableSink extends AsyncDynamicTableSink<AppendRecord
             keySerializer, valueSerializer, keyFieldGetters, valueFieldGetters));
 
     addAsyncOptionsToSinkBuilder(builder);
-    S2UpsertSink s2Sink = builder.build();
-    return SinkV2Provider.of(s2Sink, 1);
+
+    return SinkV2Provider.of(builder.build(), 1);
   }
 
   private @Nullable SerializationSchema<RowData> createSerialization(
@@ -134,8 +131,6 @@ public class S2UpsertDynamicTableSink extends AsyncDynamicTableSink<AppendRecord
     private DataType consumedDataType = null;
     private ReadableConfig clientConfiguration = null;
     private EncodingFormat<SerializationSchema<RowData>> encodingFormat = null;
-    private String basin = null;
-    private String stream = null;
     private int[] keyIndices = new int[0];
     private int[] valueIndices = new int[0];
 
@@ -147,16 +142,6 @@ public class S2UpsertDynamicTableSink extends AsyncDynamicTableSink<AppendRecord
     public S2UpsertDynamicTableSinkBuilder setClientConfiguration(
         ReadableConfig clientConfiguration) {
       this.clientConfiguration = clientConfiguration;
-      return this;
-    }
-
-    public S2UpsertDynamicTableSinkBuilder setBasin(String basin) {
-      this.basin = basin;
-      return this;
-    }
-
-    public S2UpsertDynamicTableSinkBuilder setStream(String stream) {
-      this.stream = stream;
       return this;
     }
 
@@ -185,8 +170,8 @@ public class S2UpsertDynamicTableSink extends AsyncDynamicTableSink<AppendRecord
           getMaxTimeInBufferMS(),
           this.consumedDataType,
           Preconditions.checkNotNull(this.encodingFormat, "encodingFormat must be provided"),
-          S2ClientConfig.validateForSDKConfig(
-              S2SinkConfig.validateForSink(
+          S2SinkConfig.validateForSink(
+              S2ClientConfig.validateForSDKConfig(
                   Preconditions.checkNotNull(
                       this.clientConfiguration, "clientConfiguration must be provided"))),
           Tuple2.of(keyIndices, valueIndices));

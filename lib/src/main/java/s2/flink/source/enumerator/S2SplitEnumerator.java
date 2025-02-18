@@ -2,7 +2,7 @@ package s2.flink.source.enumerator;
 
 import static s2.flink.config.S2SourceConfig.S2_SOURCE_SPLIT_START_BEHAVIOR;
 import static s2.flink.config.S2SourceConfig.S2_SOURCE_STREAMS;
-import static s2.flink.config.S2SourceConfig.S2_SOURCE_STREAM_DISCOVERY_CADENCE_MS;
+import static s2.flink.config.S2SourceConfig.S2_SOURCE_STREAM_DISCOVERY_INTERVAL_MS;
 import static s2.flink.config.S2SourceConfig.S2_SOURCE_STREAM_DISCOVERY_PREFIX;
 
 import java.time.Duration;
@@ -62,7 +62,7 @@ public abstract class S2SplitEnumerator
       throw new RuntimeException("S2 source had no specified streams, or prefix for discovery.");
     }
     final Optional<Duration> refreshCadence =
-        sourceConfig.getOptional(S2_SOURCE_STREAM_DISCOVERY_CADENCE_MS).map(Duration::ofMillis);
+        sourceConfig.getOptional(S2_SOURCE_STREAM_DISCOVERY_INTERVAL_MS).map(Duration::ofMillis);
     return new S2DynamicSplitEnumerator(
         enumContext, sourceConfig, prefix.get(), refreshCadence, List.of(), List.of(), false);
   }
@@ -86,7 +86,7 @@ public abstract class S2SplitEnumerator
         throw new RuntimeException("S2 source had no specified streams, or prefix for discovery.");
       }
       final Optional<Duration> refreshCadence =
-          sourceConfig.getOptional(S2_SOURCE_STREAM_DISCOVERY_CADENCE_MS).map(Duration::ofMillis);
+          sourceConfig.getOptional(S2_SOURCE_STREAM_DISCOVERY_INTERVAL_MS).map(Duration::ofMillis);
       return new S2DynamicSplitEnumerator(
           enumContext,
           sourceConfig,

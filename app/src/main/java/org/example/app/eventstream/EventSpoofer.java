@@ -53,7 +53,7 @@ public class EventSpoofer {
   public static void main(String[] args) throws InterruptedException, ExecutionException {
 
     final var authToken = Preconditions.checkNotNull(System.getenv("S2_AUTH_TOKEN"));
-    final var basinName = Preconditions.checkNotNull(System.getenv("MY_BASIN"));
+    final var basinName = Preconditions.checkNotNull(System.getenv("S2_BASIN"));
 
     final var config =
         Config.newBuilder(authToken)

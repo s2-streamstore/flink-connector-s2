@@ -53,7 +53,7 @@ public class S2DynamicTableSink extends AsyncDynamicTableSink<AppendRecord> {
 
   @Override
   public SinkRuntimeProvider getSinkRuntimeProvider(Context context) {
-    SerializationSchema<RowData> serializationSchema =
+    final SerializationSchema<RowData> serializationSchema =
         encodingFormat.createRuntimeEncoder(context, consumedDataType);
 
     final S2SinkBuilder<RowData> builder = S2Sink.newBuilder();
@@ -116,8 +116,8 @@ public class S2DynamicTableSink extends AsyncDynamicTableSink<AppendRecord> {
           getMaxTimeInBufferMS(),
           Preconditions.checkNotNull(this.consumedDataType, "consumedDataType must be provided"),
           Preconditions.checkNotNull(this.encodingFormat, "encodingFormat must be provided"),
-          S2ClientConfig.validateForSDKConfig(
-              S2SinkConfig.validateForSink(
+          S2SinkConfig.validateForSink(
+              S2ClientConfig.validateForSDKConfig(
                   Preconditions.checkNotNull(
                       this.clientConfiguration, "clientConfiguration must be provided"))));
     }

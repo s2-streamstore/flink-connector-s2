@@ -1,27 +1,22 @@
 package s2.flink.table.upsert;
 
 import static org.apache.flink.table.factories.FactoryUtil.FORMAT;
+import static s2.flink.config.S2ClientConfig.S2_AUTH_TOKEN;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.apache.flink.api.common.serialization.DeserializationSchema;
-import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.ConfigOption;
-import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.connector.base.table.AsyncDynamicTableSinkFactory;
 import org.apache.flink.connector.base.table.sink.options.AsyncSinkConfigurationValidator;
 import org.apache.flink.table.catalog.ResolvedCatalogTable;
 import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.catalog.UniqueConstraint;
-import org.apache.flink.table.connector.format.DecodingFormat;
 import org.apache.flink.table.connector.sink.DynamicTableSink;
 import org.apache.flink.table.connector.source.DynamicTableSource;
-import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.factories.DeserializationFormatFactory;
 import org.apache.flink.table.factories.DynamicTableSourceFactory;
 import org.apache.flink.table.factories.FactoryUtil;
@@ -34,15 +29,6 @@ import s2.flink.table.upsert.S2UpsertDynamicTableSink.S2UpsertDynamicTableSinkBu
 
 public class S2UpsertDynamicTableFactory extends AsyncDynamicTableSinkFactory
     implements DynamicTableSourceFactory {
-
-  public static final ConfigOption<String> BASIN =
-      ConfigOptions.key("s2.basin").stringType().noDefaultValue().withDescription("S2 basin name");
-
-  public static final ConfigOption<String> STREAM =
-      ConfigOptions.key("s2.stream")
-          .stringType()
-          .noDefaultValue()
-          .withDescription("S2 stream name");
 
   @Override
   public DynamicTableSink createDynamicTableSink(Context context) {
@@ -60,28 +46,17 @@ public class S2UpsertDynamicTableFactory extends AsyncDynamicTableSinkFactory
     final ResolvedCatalogTable catalogTable = context.getCatalogTable();
     final ResolvedSchema resolvedSchema = catalogTable.getResolvedSchema();
 
-    List<String> keyFields =
+    final List<String> keyFields =
         resolvedSchema.getPrimaryKey().map(UniqueConstraint::getColumns).orElse(List.of());
-    // We need projections, meaning:
-    // arrays with the index of physical columns corresponding to key, and to value (should be
-    // disjoint)
-    //
-
     final int[] keyPhysicalIndices = keyPhysicalIndices(keyFields, physicalDataType);
     final int[] valuePhysicalIndices = valuePhysicalIndices(keyPhysicalIndices, physicalDataType);
-    Preconditions.checkArgument(keyPhysicalIndices.length > 0, "Must be at least one key field.");
-    Preconditions.checkArgument(
-        valuePhysicalIndices.length > 0, "Must be at least one value field.");
 
-    builder
+    return builder
         .setConsumedDataType(factoryContext.getPhysicalDataType())
         .setEncodingFormat(factoryContext.getEncodingFormat())
         .setKeyValueRowIndices(keyPhysicalIndices, valuePhysicalIndices)
         .setClientConfiguration(prop)
-        .setBasin(prop.get(BASIN))
-        .setStream(prop.get(STREAM));
-
-    return builder.build();
+        .build();
   }
 
   private int[] keyPhysicalIndices(
@@ -113,35 +88,30 @@ public class S2UpsertDynamicTableFactory extends AsyncDynamicTableSinkFactory
 
   @Override
   public Set<ConfigOption<?>> requiredOptions() {
-    return Set.of(BASIN, STREAM);
+    return Set.of(S2_AUTH_TOKEN);
   }
 
   @Override
   public DynamicTableSource createDynamicTableSource(Context context) {
-
     final FactoryUtil.TableFactoryHelper helper =
         FactoryUtil.createTableFactoryHelper(this, context);
 
-    ReadableConfig tableOptions = helper.getOptions();
-
-    DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
-        helper.discoverDecodingFormat(DeserializationFormatFactory.class, FORMAT);
-
-    ResolvedCatalogTable catalogTable = context.getCatalogTable();
+    final ResolvedCatalogTable catalogTable = context.getCatalogTable();
     final DataType physicalDataType = context.getPhysicalRowDataType();
     final ResolvedSchema resolvedSchema = catalogTable.getResolvedSchema();
 
-    List<String> keyFields =
+    final List<String> keyFields =
         resolvedSchema.getPrimaryKey().map(UniqueConstraint::getColumns).orElse(List.of());
     final int[] keyPhysicalIndices = keyPhysicalIndices(keyFields, physicalDataType);
     final int[] valuePhysicalIndices = valuePhysicalIndices(keyPhysicalIndices, physicalDataType);
-    S2UpsertDynamicTableSource source =
-        new S2UpsertDynamicTableSource(
-            context.getPhysicalRowDataType(),
-            Configuration.fromMap(tableOptions.toMap()),
-            decodingFormat,
-            context.getPhysicalRowDataType(),
-            Tuple2.of(keyPhysicalIndices, valuePhysicalIndices));
-    return source;
+
+    return S2UpsertDynamicTableSource.newBuilder()
+        .setPhysicalDataType(context.getPhysicalRowDataType())
+        .setProducedDataType(context.getPhysicalRowDataType())
+        .setKeyValueRowIndices(keyPhysicalIndices, valuePhysicalIndices)
+        .setSourceConfig(Configuration.fromMap(helper.getOptions().toMap()))
+        .setDecodingFormat(
+            helper.discoverDecodingFormat(DeserializationFormatFactory.class, FORMAT))
+        .build();
   }
 }
