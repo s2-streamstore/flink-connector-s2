@@ -101,13 +101,12 @@ queries, we will write an update to a S2 stream.
 Start by creating a basin, and some streams to work with.
 
 ```bash
-export MY_BASIN="my-eventstream-demo-0001""
+export MY_BASIN="my-eventstream-demo-0001"
 s2 create-basin "${MY_BASIN}"
 
 # Create 10 host streams, for collecting raw eventstream inputs.
 seq 0 9 \
-	| xargs -I {} echo "host/000{}" \
-	| xargs -I {} s2 create-stream "s2://${MY_BASIN}/{}" --storage-class standard -r 1w
+	| xargs -I {} s2 create-stream "s2://${MY_BASIN}/host/000{}" --storage-class standard -r 1w
 	
 # Create a rollup stream for the intermediate query conversion dataset.
 s2 create-stream "s2://${MY_BASIN}/rollup/converting-queries-per-item" --storage-class standard -r 1w
@@ -124,7 +123,10 @@ Start the flink job. This can be done locally:
 
 Or, you can export a fat JAR of the job and run it on something like AWS's managed Flink runtime.
 
-While the job is running, generate some fake eventstream data with the provided utility:
+While the job is running, generate some fake eventstream data with the provided utility. This will
+generate a sequence of events, and append them randomly across the 10 `host` streams. It will also
+write a collection of known query conversions to `/tmp/` directory, for manual verification with the
+Flink-computed conversions.
 
 ```bash
 ./gradlew runEventSpoofer
