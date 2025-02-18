@@ -42,26 +42,6 @@ public class EventStreamJob {
   private static final String STREAM_TOP_QUERY_PER_ITEM =
       "feature/top-5-converting-queries-per-item";
 
-  private static String getAuthToken(StreamExecutionEnvironment env) throws IOException {
-    if (env instanceof LocalStreamEnvironment) {
-      return System.getenv("S2_AUTH_TOKEN");
-    } else {
-      return KinesisAnalyticsRuntime.getApplicationProperties()
-          .get("eventstream")
-          .getProperty("s2.auth-token");
-    }
-  }
-
-  private static String getWorkingBasin(StreamExecutionEnvironment env) throws IOException {
-    if (env instanceof LocalStreamEnvironment) {
-      return System.getenv("S2_BASIN");
-    } else {
-      return KinesisAnalyticsRuntime.getApplicationProperties()
-          .get("eventstream")
-          .getProperty("s2.basin");
-    }
-  }
-
   public static void main(String[] args) throws Exception {
 
     Configuration config = new Configuration();
@@ -224,6 +204,26 @@ public class EventStreamJob {
 
     statementSet.addInsert("TopQueryPerItemSink", grouped);
     statementSet.execute();
+  }
+
+  private static String getAuthToken(StreamExecutionEnvironment env) throws IOException {
+    if (env instanceof LocalStreamEnvironment) {
+      return System.getenv("S2_AUTH_TOKEN");
+    } else {
+      return KinesisAnalyticsRuntime.getApplicationProperties()
+          .get("eventstream")
+          .getProperty("s2.auth-token");
+    }
+  }
+
+  private static String getWorkingBasin(StreamExecutionEnvironment env) throws IOException {
+    if (env instanceof LocalStreamEnvironment) {
+      return System.getenv("S2_BASIN");
+    } else {
+      return KinesisAnalyticsRuntime.getApplicationProperties()
+          .get("eventstream")
+          .getProperty("s2.basin");
+    }
   }
 
   public static class UserInteraction {

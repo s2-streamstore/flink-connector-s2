@@ -11,7 +11,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
@@ -50,73 +49,6 @@ public class EventSpoofer {
     "retro decor",
     "vintage",
   };
-
-  static class RandomEvent implements Iterator<String> {
-
-    final Random random = new Random();
-
-    @Override
-    public boolean hasNext() {
-      return true;
-    }
-
-    @Override
-    public String next() {
-      final var userId = random.nextInt(20);
-      if (random.nextDouble() < 0.2) {
-        final var query = QUERIES[random.nextInt(QUERIES.length)];
-        return String.format("user=%s;search=%s", userId, query);
-      } else {
-        final var itemId = random.nextInt(20);
-        if (random.nextDouble() < 0.2) {
-          return String.format("user=%s;item=%s;action=view", userId, itemId);
-        } else {
-          return String.format("user=%s;item=%s;action=cart", userId, itemId);
-        }
-      }
-    }
-  }
-
-  static class ConvertingJourney implements Iterator<String> {
-
-    final int userId;
-    final String query;
-    final int itemIdToBuy;
-
-    // query => 0
-    // view => 1
-    // cart => 2
-    // buy => 3
-    // finished => 4
-    int stage = 0;
-
-    ConvertingJourney(int userId, String query, int itemIdToBuy) {
-      this.userId = userId;
-      this.query = query;
-      this.itemIdToBuy = itemIdToBuy;
-    }
-
-    @Override
-    public boolean hasNext() {
-      return stage < 4;
-    }
-
-    @Override
-    public String next() {
-      stage++;
-      switch (stage) {
-        case 1:
-          return String.format("user=%s;search=%s", userId, query);
-        case 2:
-          return String.format("user=%s;item=%s;action=view", userId, itemIdToBuy);
-        case 3:
-          return String.format("user=%s;item=%s;action=cart", userId, itemIdToBuy);
-        case 4:
-          return String.format("user=%s;item=%s;action=buy", userId, itemIdToBuy);
-      }
-      return "";
-    }
-  }
 
   public static void main(String[] args) throws InterruptedException, ExecutionException {
 
@@ -166,8 +98,6 @@ public class EventSpoofer {
 
       final var random = new Random();
 
-      // itemId -> convertingQuery
-      final HashMap<Integer, List<String>> stats = new HashMap<>();
       var randomEvent = new RandomEvent();
       var activeJourney =
           new ConvertingJourney(
@@ -243,12 +173,6 @@ public class EventSpoofer {
 
       pendingAppends.put(Futures.immediateFuture(null));
 
-      stats.forEach(
-          (k, v) -> {
-            System.out.printf("item=%s, queries=%s%n", k, v);
-          });
-
-      // Await responses for all.
       consumer.get();
 
       appendSessions.forEach(ManagedAppendSession::close);
@@ -256,8 +180,9 @@ public class EventSpoofer {
       System.out.println("All conversions:");
       allConversions.forEach(System.out::println);
 
-      // Also flush to log
-      Path filePath = Path.of("/tmp/event-spoofer-out");
+      // Also flush to tmp log, for manual inspection.
+      final var timestamp = java.time.Instant.now().toEpochMilli();
+      Path filePath = Path.of(String.format("/tmp/event-spoofer.%s.out", timestamp));
       Files.write(
           filePath,
           allConversions,
@@ -268,5 +193,72 @@ public class EventSpoofer {
       throw new RuntimeException(e);
     }
     executor.shutdown();
+  }
+
+  static class RandomEvent implements Iterator<String> {
+
+    final Random random = new Random();
+
+    @Override
+    public boolean hasNext() {
+      return true;
+    }
+
+    @Override
+    public String next() {
+      final var userId = random.nextInt(20);
+      if (random.nextDouble() < 0.2) {
+        final var query = QUERIES[random.nextInt(QUERIES.length)];
+        return String.format("user=%s;search=%s", userId, query);
+      } else {
+        final var itemId = random.nextInt(20);
+        if (random.nextDouble() < 0.2) {
+          return String.format("user=%s;item=%s;action=view", userId, itemId);
+        } else {
+          return String.format("user=%s;item=%s;action=cart", userId, itemId);
+        }
+      }
+    }
+  }
+
+  static class ConvertingJourney implements Iterator<String> {
+
+    final int userId;
+    final String query;
+    final int itemIdToBuy;
+
+    // query => 0
+    // view => 1
+    // cart => 2
+    // buy => 3
+    // finished => 4
+    int stage = 0;
+
+    ConvertingJourney(int userId, String query, int itemIdToBuy) {
+      this.userId = userId;
+      this.query = query;
+      this.itemIdToBuy = itemIdToBuy;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return stage < 4;
+    }
+
+    @Override
+    public String next() {
+      stage++;
+      switch (stage) {
+        case 1:
+          return String.format("user=%s;search=%s", userId, query);
+        case 2:
+          return String.format("user=%s;item=%s;action=view", userId, itemIdToBuy);
+        case 3:
+          return String.format("user=%s;item=%s;action=cart", userId, itemIdToBuy);
+        case 4:
+          return String.format("user=%s;item=%s;action=buy", userId, itemIdToBuy);
+      }
+      return "";
+    }
   }
 }
