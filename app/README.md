@@ -101,18 +101,20 @@ queries, we will write an update to a S2 stream.
 Start by creating a basin, and some streams to work with.
 
 ```bash
-export MY_BASIN="my-eventstream-demo-0001"
-s2 create-basin "${MY_BASIN}"
+export S2_AUTH_TOKEN="get-a-real-token-from-s2.dev"
+export S2_BASIN="my-eventstream-demo-0001"
+
+s2 create-basin "${S2_BASIN}"
 
 # Create 10 host streams, for collecting raw eventstream inputs.
 seq 0 9 \
-	| xargs -I {} s2 create-stream "s2://${MY_BASIN}/host/000{}" --storage-class standard -r 1w
+	| xargs -I {} s2 create-stream "s2://${S2_BASIN}/host/000{}" --storage-class standard -r 1w
 	
 # Create a rollup stream for the intermediate query conversion dataset.
-s2 create-stream "s2://${MY_BASIN}/rollup/converting-queries-per-item" --storage-class standard -r 1w
+s2 create-stream "s2://${S2_BASIN}/rollup/converting-queries-per-item" --storage-class standard -r 1w
 
 # Create a feature stream for collecting our computed features as upserts.
-s2 create-stream "s2://${MY_BASIN}/feature/top-5-converting-queries-per-item" --storage-class standard -r 1w
+s2 create-stream "s2://${S2_BASIN}/feature/top-5-converting-queries-per-item" --storage-class standard -r 1w
 ```
 
 Start the flink job. This can be done locally:
@@ -135,14 +137,14 @@ Flink-computed conversions.
 If all is working properly, you should be able to see updates to the intermediate dataset:
 
 ```bash
-s2 read s2://${MY_BASIN}/rollup/converting-queries-per-item
+s2 read s2://${S2_BASIN}/rollup/converting-queries-per-item
 ```
 
 ... and to the upsert table with the computed features:
 
 ```bash
 # Format json is required to see the headers, which contain the key (userId) in upsert mode.
-s2 read s2://${MY_BASIN}/feature/top-5-converting-queries-per-item --format json
+s2 read s2://${S2_BASIN}/feature/top-5-converting-queries-per-item --format json
 ```
 
 For convenience, you can also visualize the result of applying the upserts in the feature stream
@@ -152,9 +154,9 @@ with a provided script:
 
 # Grab current tail of the upsert stream, so that we can use that as a limit (and not continue
 # tailing indefinitely).
-tail=$(s2 check-tail s2://${MY_BASIN}/feature/top-5-converting-queries-per-item)
+tail=$(s2 check-tail s2://${S2_BASIN}/feature/top-5-converting-queries-per-item)
 s2 read \
-    s2://${MY_BASIN}/feature/top-5-converting-queries-per-item \
+    s2://${S2_BASIN}/feature/top-5-converting-queries-per-item \
     --format json \
     --limit-count "${tail}" \
   | python scripts/eventstream-kv.py \
