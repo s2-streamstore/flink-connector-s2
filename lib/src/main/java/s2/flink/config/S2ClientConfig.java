@@ -42,7 +42,7 @@ public class S2ClientConfig {
   public static ConfigOption<Long> S2_RETRY_DELAY_MS =
       org.apache.flink.configuration.ConfigOptions.key("s2.client.retry-delay-ms")
           .longType()
-          .noDefaultValue();
+          .defaultValue(1000L);
 
   public static Config fromConfig(ReadableConfig config) {
     final var token = config.getOptional(S2_AUTH_TOKEN);
@@ -62,6 +62,8 @@ public class S2ClientConfig {
         .getOptional(S2_RETRY_DELAY_MS)
         .map(Duration::ofMillis)
         .ifPresent(builder::withRetryDelay);
+
+    builder.withCompression(true);
 
     return builder.build();
   }
