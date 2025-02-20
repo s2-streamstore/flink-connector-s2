@@ -56,7 +56,7 @@ public class S2SplitReader implements SplitReader<SequencedRecord, S2SourceSplit
   public S2SplitReader(ReadableConfig sourceConfig) {
     LOG.debug("split reader start");
     this.sourceConfig = sourceConfig;
-    this.executor = new ScheduledThreadPoolExecutor(1);
+    this.executor = new ScheduledThreadPoolExecutor(4);
     this.s2Config = S2ClientConfig.fromConfig(sourceConfig);
     this.basinName = sourceConfig.get(S2_SOURCE_BASIN);
     this.basinChannel =
@@ -112,6 +112,8 @@ public class S2SplitReader implements SplitReader<SequencedRecord, S2SourceSplit
       var splitWithStart = splitsWithStart.poll();
       var readSession =
           StreamClient.newBuilder(this.s2Config, this.basinName, splitWithStart.f1.splitId())
+              .withExecutor(this.executor)
+              .withChannel(this.basinChannel)
               .build()
               .managedReadSession(
                   ReadSessionRequest.newBuilder().withStartSeqNum(splitWithStart.f0).build(),

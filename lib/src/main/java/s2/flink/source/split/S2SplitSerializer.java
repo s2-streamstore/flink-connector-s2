@@ -1,17 +1,18 @@
 package s2.flink.source.split;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Optional;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import s2.flink.internal.SourceSplit;
 import s2.flink.internal.SourceSplit.StartBehavior;
 
 public class S2SplitSerializer implements SimpleVersionedSerializer<S2SourceSplit> {
 
   private static final int VERSION = 1;
-  private static final Logger LOG = LoggerFactory.getLogger(S2SplitSerializer.class);
 
   @Override
   public int getVersion() {
@@ -20,7 +21,12 @@ public class S2SplitSerializer implements SimpleVersionedSerializer<S2SourceSpli
 
   @Override
   public byte[] serialize(S2SourceSplit obj) throws IOException {
-    return intoProto(obj).toByteArray();
+    try (final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        final DataOutputStream out = new DataOutputStream(baos)) {
+      out.writeInt(this.getVersion());
+      intoProto(obj).writeTo(out);
+      return baos.toByteArray();
+    }
   }
 
   public static SourceSplit intoProto(S2SourceSplit obj) {
@@ -36,12 +42,20 @@ public class S2SplitSerializer implements SimpleVersionedSerializer<S2SourceSpli
 
   @Override
   public S2SourceSplit deserialize(int version, byte[] serialized) throws IOException {
-    LOG.debug("split deserialize");
 
-    if (version != VERSION) {
-      throw new IOException("Unsupported version: " + version);
+    try (final ByteArrayInputStream bais = new ByteArrayInputStream(serialized);
+        final DataInputStream in = new DataInputStream(bais)) {
+      final int versionNumber = in.readInt();
+      if (versionNumber != this.getVersion()) {
+        throw new IllegalStateException(
+            "Serialized version mismatch. Expected: "
+                + this.getVersion()
+                + ", got: "
+                + versionNumber);
+      }
+
+      return fromProto(SourceSplit.parseFrom(in));
     }
-    return fromProto(SourceSplit.parseFrom(serialized));
   }
 
   public static S2SourceSplit fromProto(SourceSplit sourceSplit) {
