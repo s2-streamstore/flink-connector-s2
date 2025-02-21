@@ -175,4 +175,5 @@ A list of all `s2.*` configurations is below:
 
 See the [app](./app) submodule for some demo applications. In particular,
 the [EventStreamJob](./app/src/main/java/org/example/app/eventstream/EventStreamJob.java) shows an
-end-to-end example involving both source and sink (regular and upsert).
+end-to-end example involving both source and sink (regular and upsert). A walkthrough of how to
+setup that job is available in the [README](./app/README.md).
