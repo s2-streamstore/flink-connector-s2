@@ -153,6 +153,8 @@ public class EventSpoofer {
         pendingAppends.put(fut);
       }
 
+      // Produce random events (not from converting journeys) for the next 5 seconds, to help ensure
+      // the watermark is sufficiently advanced for all sources.
       for (var i = 0; i < 6; i++) {
         Thread.sleep(1000);
         for (var session : appendSessions) {
