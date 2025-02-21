@@ -140,7 +140,6 @@ public class S2DynamicSplitEnumerator extends S2SplitEnumerator {
 
   private List<String> getStreams() {
     try {
-      // TODO pagination
       var resp =
           this.listStreamsExhaustively(
                   ListStreamsRequest.newBuilder().withPrefix(discoveryPrefix).build(),
