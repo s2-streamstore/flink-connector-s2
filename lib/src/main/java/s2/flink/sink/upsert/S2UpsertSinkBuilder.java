@@ -1,5 +1,8 @@
 package s2.flink.sink.upsert;
 
+import static s2.flink.config.S2ClientConfig.validateForSDKConfig;
+import static s2.flink.config.S2SinkConfig.validateForSink;
+
 import java.util.Optional;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.util.Preconditions;
@@ -13,24 +16,27 @@ public class S2UpsertSinkBuilder extends S2SinkBuilder<RowData> {
     Preconditions.checkArgument(
         elementConverter.isPresent(), "Element converter must be provided.");
     Preconditions.checkArgument(
-        s2ConfigProperties.isPresent(), "S2 config properties must be provided.");
-    Preconditions.checkArgument(stream.isPresent(), "Stream must be provided.");
-    Preconditions.checkArgument(basin.isPresent(), "Basin must be provided.");
+        clientConfiguration.isPresent(), "S2 config properties must be provided.");
     return new S2UpsertSink(
-        Optional.ofNullable(getMaxBatchSize()).orElse(S2AsyncSinkConfig.MAX_BATCH_COUNT),
+        defaultOrChecked(
+            getMaxBatchSize(),
+            S2AsyncSinkConfig.MAX_BATCH_COUNT,
+            v -> v >= 0 && v <= S2AsyncSinkConfig.MAX_BATCH_COUNT),
         Optional.ofNullable(getMaxInFlightRequests())
             .orElse(S2AsyncSinkConfig.DEFAULT_MAX_INFLIGHT_REQUESTS),
         Optional.ofNullable(getMaxBufferedRequests())
             .orElse(S2AsyncSinkConfig.DEFAULT_MAX_BUFFERED_REQUESTS),
-        Optional.ofNullable(getMaxBatchSizeInBytes())
-            .orElse((long) S2AsyncSinkConfig.MAX_BATCH_SIZE_BYTES),
+        defaultOrChecked(
+            getMaxBatchSizeInBytes(),
+            (long) S2AsyncSinkConfig.MAX_BATCH_SIZE_BYTES,
+            v -> v > 0 && v <= S2AsyncSinkConfig.MAX_BATCH_SIZE_BYTES),
         Optional.ofNullable(getMaxTimeInBufferMS())
             .orElse(S2AsyncSinkConfig.DEFAULT_MAX_TIME_IN_BUFFER_MS),
-        Optional.ofNullable(getMaxRecordSizeInBytes())
-            .orElse((long) S2AsyncSinkConfig.MAX_RECORD_SIZE_BYTES),
+        defaultOrChecked(
+            getMaxRecordSizeInBytes(),
+            (long) S2AsyncSinkConfig.MAX_RECORD_SIZE_BYTES,
+            v -> v > 0 && v <= S2AsyncSinkConfig.MAX_RECORD_SIZE_BYTES),
         this.elementConverter.get(),
-        s2ConfigProperties.get(),
-        this.basin.get(),
-        this.stream.get());
+        validateForSink(validateForSDKConfig(clientConfiguration.get())));
   }
 }

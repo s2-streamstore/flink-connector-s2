@@ -1,5 +1,6 @@
 plugins {
     `java-library`
+    id("com.google.protobuf") version "0.9.4"
     id("maven-publish")
 }
 
@@ -33,12 +34,18 @@ dependencies {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(11))
     }
     withJavadocJar()
     withSourcesJar()
 }
 
+var protobufVersion = "4.29.3"
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:$protobufVersion"
+    }
+}
 
 publishing {
     publications {

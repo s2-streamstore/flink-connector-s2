@@ -3,9 +3,9 @@ package s2.flink.sink;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Properties;
 import org.apache.flink.api.connector.sink2.SinkWriter;
 import org.apache.flink.api.connector.sink2.WriterInitContext;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.connector.base.sink.AsyncSinkBase;
 import org.apache.flink.connector.base.sink.writer.BufferedRequestState;
 import org.apache.flink.connector.base.sink.writer.ElementConverter;
@@ -19,9 +19,7 @@ public class S2Sink<InputT> extends AsyncSinkBase<InputT, AppendRecord> {
 
   private static final Logger LOG = LoggerFactory.getLogger(S2Sink.class);
 
-  protected final Properties s2ConfigProperties;
-  protected final String basin;
-  protected final String stream;
+  protected final ReadableConfig clientConfiguration;
 
   protected S2Sink(
       int maxBatchSize,
@@ -31,9 +29,7 @@ public class S2Sink<InputT> extends AsyncSinkBase<InputT, AppendRecord> {
       long maxTimeInBufferMS,
       long maxRecordSizeInBytes,
       ElementConverter<InputT, AppendRecord> elementConverter,
-      Properties s2ConfigProperties,
-      String basin,
-      String stream) {
+      ReadableConfig clientConfiguration) {
     super(
         elementConverter,
         maxBatchSize,
@@ -43,9 +39,7 @@ public class S2Sink<InputT> extends AsyncSinkBase<InputT, AppendRecord> {
         maxTimeInBufferMS,
         maxRecordSizeInBytes);
 
-    this.s2ConfigProperties = s2ConfigProperties;
-    this.basin = basin;
-    this.stream = stream;
+    this.clientConfiguration = clientConfiguration;
   }
 
   public static <InputT> S2SinkBuilder<InputT> newBuilder() {
@@ -74,9 +68,7 @@ public class S2Sink<InputT> extends AsyncSinkBase<InputT, AppendRecord> {
         initContext,
         builder.build(),
         Collections.emptyList(),
-        this.s2ConfigProperties,
-        this.basin,
-        this.stream);
+        this.clientConfiguration);
   }
 
   @Override
@@ -94,13 +86,7 @@ public class S2Sink<InputT> extends AsyncSinkBase<InputT, AppendRecord> {
     builder.setMaxRecordSizeInBytes(getMaxRecordSizeInBytes());
 
     return new S2SinkWriter<InputT>(
-        getElementConverter(),
-        context,
-        builder.build(),
-        recoveredState,
-        this.s2ConfigProperties,
-        this.basin,
-        this.stream);
+        getElementConverter(), context, builder.build(), recoveredState, this.clientConfiguration);
   }
 
   @Override

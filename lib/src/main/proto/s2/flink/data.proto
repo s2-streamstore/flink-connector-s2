@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package s2.flink;
+
+option java_multiple_files = true;
+option java_package = "s2.flink.internal";
+
+message EnumeratorState {
+  bool initial_distribution_completed = 1;
+  repeated string streams = 2;
+  repeated SourceSplit unassigned_streams = 3;
+}
+
+message SourceSplit {
+  enum StartBehavior {
+    FIRST = 0;
+    NEXT = 1;
+  }
+  string split_id = 1;
+  StartBehavior start_behavior = 2;
+  optional int64 start_seq_num = 3;
+  int64 consumed_records = 4;
+  int64 consumed_metered_bytes = 5;
+}
+
+message BufferedRequestState {
+  message WrappedRequest {
+    bytes entry = 1;
+    int64 size = 2;
+  }
+  repeated WrappedRequest entries = 1;
+}
