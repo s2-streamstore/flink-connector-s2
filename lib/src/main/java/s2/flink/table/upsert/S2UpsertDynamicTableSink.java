@@ -160,8 +160,8 @@ public class S2UpsertDynamicTableSink extends AsyncDynamicTableSink<AppendRecord
 
     @Override
     public S2UpsertDynamicTableSink build() {
-      Preconditions.checkArgument(keyIndices.length > 0);
-      Preconditions.checkArgument(valueIndices.length > 0);
+      Preconditions.checkArgument(keyIndices.length > 0, "primary key indices must not be empty");
+      Preconditions.checkArgument(valueIndices.length > 0, "value indices must not be empty");
       return new S2UpsertDynamicTableSink(
           getMaxBatchSize(),
           getMaxInFlightRequests(),
