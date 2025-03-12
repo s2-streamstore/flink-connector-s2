@@ -1,0 +1,12 @@
+s2.flink.config
+s2.flink.internal
+s2.flink.record
+s2.flink.sink
+s2.flink.sink.upsert
+s2.flink.source
+s2.flink.source.enumerator
+s2.flink.source.reader
+s2.flink.source.serialization
+s2.flink.source.split
+s2.flink.table
+s2.flink.table.upsert
