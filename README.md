@@ -170,6 +170,7 @@ A list of all `s2.*` configurations is below:
 | s2.source | discovery-interval-ms     | no                                |       | s2.flink.config.S2SourceConfig | long                                     |
 | s2.source | start-behavior            | no                                |       | s2.flink.config.S2SourceConfig | s2.flink.source.split.SplitStartBehavior |
 | s2.source | read-session-buffer-bytes | no                                |       | s2.flink.config.S2SourceConfig | int                                      |
+| s2.source | read-session-heartbeater  | no                                |       | s2.flink.config.S2SourceConfig | boolean                                  |
 
 ## Demos
 
