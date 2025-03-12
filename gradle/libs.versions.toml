@@ -2,7 +2,7 @@
 flink = "1.19.1"
 guava = "33.4.0-jre"
 protobuf = "4.29.3"
-s2 = "0.0.13"
+s2 = "0.0.14"
 
 [libraries]
 flink-connector-base = { module = "org.apache.flink:flink-connector-base", version.ref = "flink" }
