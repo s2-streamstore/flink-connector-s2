@@ -23,7 +23,7 @@ repositories {
 val flinkVersion = "1.20.0"
 val grpcVersion = "1.64.0"
 var log4jVersion = "2.17.1"
-var s2Version = "0.0.13"
+var s2Version = "0.0.14"
 
 dependencies {
     implementation(project(":lib"))

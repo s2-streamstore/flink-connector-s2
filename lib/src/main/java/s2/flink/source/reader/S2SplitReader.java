@@ -2,6 +2,7 @@ package s2.flink.source.reader;
 
 import static s2.flink.config.S2SourceConfig.S2_PER_SPLIT_READ_SESSION_BUFFER_BYTES;
 import static s2.flink.config.S2SourceConfig.S2_SOURCE_BASIN;
+import static s2.flink.config.S2SourceConfig.S2_SOURCE_READ_SESSION_HEARTBEATER;
 
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -116,7 +117,10 @@ public class S2SplitReader implements SplitReader<SequencedRecord, S2SourceSplit
               .withChannel(this.basinChannel)
               .build()
               .managedReadSession(
-                  ReadSessionRequest.newBuilder().withStartSeqNum(splitWithStart.f0).build(),
+                  ReadSessionRequest.newBuilder()
+                      .withStartSeqNum(splitWithStart.f0)
+                      .withHeartbeats(this.sourceConfig.get(S2_SOURCE_READ_SESSION_HEARTBEATER))
+                      .build(),
                   this.sourceConfig.get(S2_PER_SPLIT_READ_SESSION_BUFFER_BYTES));
 
       splitSessions.add(Tuple2.of(splitWithStart.f1, readSession));

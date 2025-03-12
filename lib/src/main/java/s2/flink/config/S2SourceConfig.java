@@ -37,6 +37,11 @@ public class S2SourceConfig {
           .intType()
           .defaultValue(1024 * 1024 * 10);
 
+  public static final ConfigOption<Boolean> S2_SOURCE_READ_SESSION_HEARTBEATER =
+      org.apache.flink.configuration.ConfigOptions.key("s2.source.read-session-heartbeater")
+          .booleanType()
+          .defaultValue(true);
+
   public static <T extends ReadableConfig> T validateForSource(T config) {
     if (config.getOptional(S2_SOURCE_STREAMS).isEmpty()
         && config.getOptional(S2_SOURCE_STREAM_DISCOVERY_PREFIX).isEmpty()) {
