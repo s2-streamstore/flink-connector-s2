@@ -1,7 +1,15 @@
 # flink-connector-s2
 
 > [!WARNING]
-> This connector is in alpha release.
+> **This connector is deprecated and will stop working.**
+>
+> It relies on the [S2 Java SDK](https://github.com/s2-streamstore/s2-sdk-java),
+> which uses our `v1alpha` gRPC API that is being retired.
+>
+> Please refer to the [currently supported SDKs](https://s2.dev/docs/sdk), or
+> the [HTTP API](https://s2.dev/docs/api/protocol) directly.
+>
+> If you have a need for a Java SDK or Flink connector, get in touch at [hi@s2.dev](mailto:hi@s2.dev).
 
 This repo contains a Flink connector for reading from and writing to [S2 streams](https://s2.dev).
 
